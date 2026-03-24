@@ -1,12 +1,12 @@
-# ⛽ Sistema de Gestión para Gasolinera
+# Sistema de Gestión para Gasolinera
 
 Sistema web integral para la gestión operativa, administrativa y financiera de una gasolinera, desarrollado con Laravel. Incluye control de ventas, inventario de combustible, turnos de despachadores, cuentas por cobrar/pagar, reportes y auditoría.
 
 ---
 
-## 🚀 Características principales
+## Características principales
 
-### 🔹 Operación
+###  Operación
 
 * Registro de ventas de combustible
 * Control de precios por tipo de combustible
@@ -16,7 +16,7 @@ Sistema web integral para la gestión operativa, administrativa y financiera de 
 * Ajustes manuales de inventario
 * Anulación de ventas y abastecimientos
 
-### 🔹 Turnos
+###  Turnos
 
 * Apertura y cierre de turnos
 * Asignación de despachadores
@@ -24,7 +24,7 @@ Sistema web integral para la gestión operativa, administrativa y financiera de 
 * Asignación de bomba fija o libre
 * Reportes por turno
 
-### 🔹 Administración
+###  Administración
 
 * Gestión de gastos
 * Gestión de clientes
@@ -32,7 +32,7 @@ Sistema web integral para la gestión operativa, administrativa y financiera de 
 * Cuentas por cobrar (ventas a crédito)
 * Cuentas por pagar (deudas con proveedores)
 
-### 🔹 Reportes
+###  Reportes
 
 * Reporte de ventas
 * Reporte de gastos
@@ -42,7 +42,7 @@ Sistema web integral para la gestión operativa, administrativa y financiera de 
 * Balance operativo (financiero)
 * Exportación a PDF
 
-### 🔹 Seguridad
+### Seguridad
 
 * Sistema de roles (admin, supervisor, despachador)
 * Auditoría completa de acciones
@@ -51,7 +51,7 @@ Sistema web integral para la gestión operativa, administrativa y financiera de 
 
 ---
 
-## 📊 Balance operativo
+## Balance operativo
 
 El sistema incluye un reporte financiero que calcula:
 
@@ -63,7 +63,7 @@ Permite analizar la rentabilidad del negocio por rango de fechas.
 
 ---
 
-## 🧰 Tecnologías utilizadas
+##  Tecnologías utilizadas
 
 * PHP 8+
 * Laravel 12
@@ -74,7 +74,7 @@ Permite analizar la rentabilidad del negocio por rango de fechas.
 
 ---
 
-## ⚙️ Instalación
+##  Instalación
 
 ### 1. Clonar repositorio
 
@@ -125,7 +125,7 @@ php artisan serve
 
 ---
 
-## 🔐 Configuración de sesión (seguridad)
+## Configuración de sesión (seguridad)
 
 El sistema incluye cierre automático por inactividad.
 
@@ -138,7 +138,7 @@ SESSION_EXPIRE_ON_CLOSE=false
 
 ---
 
-## 👥 Roles del sistema
+## Roles del sistema
 
 | Rol         | Acceso               |
 | ----------- | -------------------- |
@@ -148,7 +148,7 @@ SESSION_EXPIRE_ON_CLOSE=false
 
 ---
 
-## 📂 Estructura de módulos
+## Estructura de módulos
 
 * **Ventas** → Registro y control de ventas
 * **Inventario** → Tanques y combustible
@@ -161,7 +161,7 @@ SESSION_EXPIRE_ON_CLOSE=false
 
 ---
 
-## 📄 Exportación a PDF
+## Exportación a PDF
 
 El sistema permite exportar:
 
@@ -174,7 +174,7 @@ El sistema permite exportar:
 
 ---
 
-## 🧪 Estado del proyecto
+## Estado del proyecto
 
 ✅ Sistema funcional
 ✅ Listo para uso en gasolineras pequeñas/medianas
@@ -182,7 +182,7 @@ El sistema permite exportar:
 
 ---
 
-## 💰 Modelo de implementación sugerido
+## Modelo de implementación sugerido
 
 * Instalación por cliente
 * Hosting independiente por gasolinera
@@ -190,7 +190,7 @@ El sistema permite exportar:
 
 ---
 
-## 📌 Próximas mejoras
+## Próximas mejoras
 
 * Facturación electrónica FEL (Guatemala)
 * Impresión de tickets térmicos
@@ -200,7 +200,7 @@ El sistema permite exportar:
 
 ---
 
-## 👨‍💻 Autor
+## Autor
 
 **Sergio**
 Ingeniero en Sistemas
@@ -208,6 +208,6 @@ Especialización en Inteligencia Artificial
 
 ---
 
-## 📜 Licencia
+## Licencia
 
 Este proyecto puede ser utilizado con fines educativos o comerciales bajo acuerdo del autor.
