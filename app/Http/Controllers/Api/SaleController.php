@@ -100,13 +100,45 @@ public function list(\Illuminate\Http\Request $request): JsonResponse
     $from = $request->query('from');
     $to = $request->query('to');
 
+    $latestFelStatusSub = DB::table('fel_documents as fd')
+        ->select('fd.fel_status')
+        ->whereColumn('fd.sale_id', 's.id')
+        ->orderByDesc('fd.id')
+        ->limit(1);
+
+    $latestFelIdSub = DB::table('fel_documents as fd')
+        ->select('fd.id')
+        ->whereColumn('fd.sale_id', 's.id')
+        ->orderByDesc('fd.id')
+        ->limit(1);
+
+    $latestFelUuidSub = DB::table('fel_documents as fd')
+        ->select('fd.uuid')
+        ->whereColumn('fd.sale_id', 's.id')
+        ->orderByDesc('fd.id')
+        ->limit(1);
+
     $sales = DB::table('sales as s')
         ->join('users as u', 'u.id', '=', 's.user_id')
         ->join('fuels as f', 'f.id', '=', 's.fuel_id')
         ->when($from, fn ($q) => $q->whereDate('s.sold_at', '>=', $from))
         ->when($to, fn ($q) => $q->whereDate('s.sold_at', '<=', $to))
         ->orderByDesc('s.sold_at')
-        ->selectRaw('s.id, s.sold_at, s.gallons, s.total_amount_q, s.status, u.name as user_name, f.name as fuel_name')
+        ->select([
+            's.id',
+            's.sold_at',
+            's.gallons',
+            's.total_amount_q',
+            's.status',
+            'u.name as user_name',
+            'f.name as fuel_name',
+            DB::raw('(' . $latestFelStatusSub->toSql() . ') as fel_status'),
+            DB::raw('(' . $latestFelIdSub->toSql() . ') as fel_id'),
+            DB::raw('(' . $latestFelUuidSub->toSql() . ') as fel_uuid'),
+        ])
+        ->mergeBindings($latestFelStatusSub)
+        ->mergeBindings($latestFelIdSub)
+        ->mergeBindings($latestFelUuidSub)
         ->get();
 
     return response()->json([

@@ -59,5 +59,10 @@ class Sale extends Model
         return $this->hasMany(\App\Models\FelDocument::class);
     }
 
+    public function latestFelDocument()
+    {
+        return $this->hasOne(\App\Models\FelDocument::class)->latestOfMany();
+    }
+
 
 }

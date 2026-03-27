@@ -130,7 +130,20 @@ Route::get('/reports/financial-summary', [DashboardController::class, 'financial
 Route::get('/reports/financial-summary/pdf', [DashboardController::class, 'financialSummaryPdf'])->middleware('role:admin,supervisor');
 Route::post('/sales/{sale}/fel', [FelController::class, 'issueSaleInvoice'])
     ->middleware('role:admin,supervisor');
+    
+Route::get('/fel-documents/{felDocument}', [FelController::class, 'show'])
+    ->middleware('role:admin,supervisor');
 
+Route::get('/fel-documents/{felDocument}/pdf', [FelController::class, 'downloadPdf'])
+    ->middleware('role:admin,supervisor');
+
+Route::get('/fel-documents/{felDocument}/xml', [FelController::class, 'downloadXml'])
+    ->middleware('role:admin,supervisor');
+
+Route::get('/fel-documents/{felDocument}/html', [FelController::class, 'downloadHtml'])
+    ->middleware('role:admin,supervisor');
+Route::post('/fel-documents/{felDocument}/cancel', [FelController::class, 'cancel'])
+    ->middleware('role:admin,supervisor');
 
 
 require __DIR__.'/auth.php';

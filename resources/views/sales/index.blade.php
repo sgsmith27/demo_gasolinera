@@ -91,17 +91,81 @@ let html = `
                 : `<span class="text-gray-500">—</span>`}
             </td>
             <td class="px-3 py-2">
-              ${s.status === 'active'
-                ? `
-                  <form method="POST" action="/sales/${s.id}/fel" class="inline">
-                    <input type="hidden" name="_token" value="${csrfToken}">
-                    <button type="submit"
-                      class="rounded-xl bg-indigo-600 text-white px-3 py-2 text-sm font-medium hover:bg-indigo-700 transition">
-                      Emitir FEL
-                    </button>
-                  </form>
-                `
-                : `<span class="text-gray-500">—</span>`}
+              ${
+                s.fel_status === 'certified'
+                  ? `
+                    <div class="flex flex-col gap-1">
+                      <span class="inline-flex rounded-full bg-emerald-100 text-emerald-700 px-2 py-1 text-xs font-medium w-fit">
+                        Certificada
+                      </span>
+                      <div class="text-[11px] text-gray-500 break-all">
+                        ${s.fel_uuid ?? ''}
+                      </div>
+                      <div class="flex flex-wrap gap-2 mt-1">
+                        <a href="/fel-documents/${s.fel_id}" class="underline text-slate-700">Ver</a>
+                        <a href="/fel-documents/${s.fel_id}/pdf" target="_blank" class="underline text-indigo-600">PDF</a>
+                        <a href="/fel-documents/${s.fel_id}/xml" target="_blank" class="underline text-blue-600">XML</a>
+                        <a href="/fel-documents/${s.fel_id}/html" target="_blank" class="underline text-amber-600">HTML</a>
+                      </div>
+                    </div>
+                  `
+                  : s.fel_status === 'error'
+                    ? `
+                      <div class="flex flex-col gap-1">
+                        <span class="inline-flex rounded-full bg-rose-100 text-rose-700 px-2 py-1 text-xs font-medium w-fit">
+                          Error
+                        </span>
+                        ${
+                          s.status === 'active'
+                            ? `
+                              <form method="POST" action="/sales/${s.id}/fel" class="inline mt-1">
+                                <input type="hidden" name="_token" value="${csrfToken}">
+                                <button type="submit"
+                                  class="rounded-xl bg-indigo-600 text-white px-3 py-2 text-sm font-medium hover:bg-indigo-700 transition">
+                                  Reintentar
+                                </button>
+                              </form>
+                            `
+                            : `<span class="text-gray-500">—</span>`
+                        }
+                      </div>
+                    `
+                    : s.fel_status === 'pending'
+                      ? `
+                        <span class="inline-flex rounded-full bg-amber-100 text-amber-700 px-2 py-1 text-xs font-medium">
+                          Pendiente
+                        </span>
+                      `
+                      : s.status === 'active'
+                        ? `
+                          <form method="POST" action="/sales/${s.id}/fel" class="inline">
+                            <input type="hidden" name="_token" value="${csrfToken}">
+                            <button type="submit"
+                              class="rounded-xl bg-indigo-600 text-white px-3 py-2 text-sm font-medium hover:bg-indigo-700 transition">
+                              Emitir FEL
+                            </button>
+                          </form>
+                        `
+                        : s.fel_status === 'cancelled'
+                        ? `
+                          <div class="flex flex-col gap-1">
+                            <span class="inline-flex rounded-full bg-slate-200 text-slate-700 px-2 py-1 text-xs font-medium w-fit">
+                              Anulada
+                            </span>
+                            <div class="text-[11px] text-gray-500 break-all">
+                              ${s.fel_uuid ?? ''}
+                            </div>
+                            <div class="flex flex-wrap gap-2 mt-1">
+                              <a href="/fel-documents/${s.fel_id}"
+                                class="underline text-slate-700">
+                                Ver
+                              </a>
+                            </div>
+                          </div>
+                        `
+                        : `<span class="text-gray-500">—</span>`
+                        
+              }
             </td>
           </tr>
         `).join('')}

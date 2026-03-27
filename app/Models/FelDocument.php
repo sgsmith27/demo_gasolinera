@@ -46,4 +46,14 @@ class FelDocument extends Model
     {
         return $this->hasMany(FelEvent::class);
     }
+
+    public function customer()
+    {
+        return $this->belongsTo(\App\Models\Customer::class);
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'created_by');
+    }   
 }
