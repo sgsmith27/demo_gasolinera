@@ -1,5 +1,17 @@
 @extends('layouts.app', ['title' => 'Ventas'])
 
+@if(session('success'))
+    <div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+        {{ session('success') }}
+    </div>
+@endif
+
+@if($errors->has('fel'))
+    <div class="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+        {{ $errors->first('fel') }}
+    </div>
+@endif
+
 @section('content')
 <div class="bg-white rounded-xl shadow-sm border p-5">
     <div class="flex items-center justify-between mb-4">
@@ -45,45 +57,60 @@ async function loadSales() {
     out.innerHTML = '<span class="text-red-600">Error cargando ventas</span>';
     return;
   }
+  const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-  let html = `
-    <div class="overflow-auto border rounded-lg">
-      <table class="min-w-full text-left text-sm">
-        <thead class="bg-gray-100">
-          <tr>
-            <th class="px-3 py-2">ID</th>
-            <th class="px-3 py-2">Fecha</th>
-            <th class="px-3 py-2">Usuario</th>
-            <th class="px-3 py-2">Combustible</th>
-            <th class="px-3 py-2">Galones</th>
-            <th class="px-3 py-2">Total Q</th>
-            <th class="px-3 py-2">Estado</th>
-            <th class="px-3 py-2">Acciones</th>
+let html = `
+  <div class="overflow-auto border rounded-lg">
+    <table class="min-w-full text-left text-sm">
+      <thead class="bg-gray-100">
+        <tr>
+          <th class="px-3 py-2">ID</th>
+          <th class="px-3 py-2">Fecha</th>
+          <th class="px-3 py-2">Usuario</th>
+          <th class="px-3 py-2">Combustible</th>
+          <th class="px-3 py-2">Galones</th>
+          <th class="px-3 py-2">Total Q</th>
+          <th class="px-3 py-2">Estado</th>
+          <th class="px-3 py-2">Acciones</th>
+          <th class="px-3 py-2">FEL</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${data.sales.map(s => `
+          <tr class="border-t">
+            <td class="px-3 py-2">${s.id}</td>
+            <td class="px-3 py-2">${s.sold_at}</td>
+            <td class="px-3 py-2">${s.user_name}</td>
+            <td class="px-3 py-2">${s.fuel_name}</td>
+            <td class="px-3 py-2">${Number(s.gallons).toFixed(3)}</td>
+            <td class="px-3 py-2">Q${Number(s.total_amount_q).toFixed(2)}</td>
+            <td class="px-3 py-2">${s.status}</td>
+            <td class="px-3 py-2">
+              ${s.status === 'active'
+                ? `<button class="underline text-red-600" onclick="voidSale(${s.id})">Anular</button>`
+                : `<span class="text-gray-500">—</span>`}
+            </td>
+            <td class="px-3 py-2">
+              ${s.status === 'active'
+                ? `
+                  <form method="POST" action="/sales/${s.id}/fel" class="inline">
+                    <input type="hidden" name="_token" value="${csrfToken}">
+                    <button type="submit"
+                      class="rounded-xl bg-indigo-600 text-white px-3 py-2 text-sm font-medium hover:bg-indigo-700 transition">
+                      Emitir FEL
+                    </button>
+                  </form>
+                `
+                : `<span class="text-gray-500">—</span>`}
+            </td>
           </tr>
-        </thead>
-        <tbody>
-          ${data.sales.map(s => `
-            <tr class="border-t">
-              <td class="px-3 py-2">${s.id}</td>
-              <td class="px-3 py-2">${s.sold_at}</td>
-              <td class="px-3 py-2">${s.user_name}</td>
-              <td class="px-3 py-2">${s.fuel_name}</td>
-              <td class="px-3 py-2">${Number(s.gallons).toFixed(3)}</td>
-              <td class="px-3 py-2">Q${Number(s.total_amount_q).toFixed(2)}</td>
-              <td class="px-3 py-2">${s.status}</td>
-              <td class="px-3 py-2">
-                ${s.status === 'active'
-                  ? `<button class="underline text-red-600" onclick="voidSale(${s.id})">Anular</button>`
-                  : `<span class="text-gray-500">—</span>`}
-              </td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    </div>
-  `;
+        `).join('')}
+      </tbody>
+    </table>
+  </div>
+`;
 
-  out.innerHTML = html;
+out.innerHTML = html;
 }
 
 async function voidSale(id) {

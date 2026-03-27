@@ -78,6 +78,7 @@
         <button id="btn_submit" class="bg-black text-white rounded-lg px-4 py-2">
             Registrar venta
         </button>
+        
 
         <div id="result" class="text-sm mt-2"></div>
     </div>

@@ -54,5 +54,10 @@ class Sale extends Model
         return $this->belongsTo(\App\Models\Customer::class, 'customer_id');
     }
 
+    public function felDocuments()
+    {
+        return $this->hasMany(\App\Models\FelDocument::class);
+    }
+
 
 }

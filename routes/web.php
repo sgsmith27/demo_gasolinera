@@ -17,6 +17,7 @@ use App\Http\Controllers\Web\CustomerController;
 use App\Http\Controllers\Web\AccountReceivableController;
 use App\Http\Controllers\Web\SupplierController;
 use App\Http\Controllers\Web\AccountPayableController;
+use App\Http\Controllers\Web\FelController;
 
 Route::get('/', function () {
     return redirect()->route('dashboard');
@@ -127,6 +128,8 @@ Route::get('/accounts-payable/{accountPayable}/pdf', [AccountPayableController::
 Route::get('/accounts-payable/{accountPayable}', [AccountPayableController::class, 'show'])->middleware('role:admin,supervisor');
 Route::get('/reports/financial-summary', [DashboardController::class, 'financialSummary'])->middleware('role:admin,supervisor');
 Route::get('/reports/financial-summary/pdf', [DashboardController::class, 'financialSummaryPdf'])->middleware('role:admin,supervisor');
+Route::post('/sales/{sale}/fel', [FelController::class, 'issueSaleInvoice'])
+    ->middleware('role:admin,supervisor');
 
 
 
