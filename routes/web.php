@@ -30,8 +30,7 @@ Route::get('/dashboard', [DashboardController::class, 'dashboard'])
 Route::middleware(['auth'])->group(function () {
     Route::get('/', [DashboardController::class, 'home']);
 
-    Route::get('/sales/new', [DashboardController::class, 'newSale'])->middleware('role:admin,supervisor,despachador');
-
+    Route::get('/sales/new', [DashboardController::class, 'newSale'])->middleware('role:admin,supervisor,despachador');    
     Route::get('/inventory', [DashboardController::class, 'inventory'])->middleware('role:admin,supervisor');
 
     Route::get('/reports/daily-close', [DashboardController::class, 'dailyClose'])->middleware('role:admin,supervisor');
@@ -59,6 +58,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/fuel-prices/new', [DashboardController::class, 'newFuelPrice'])->middleware('role:admin,supervisor');
     Route::get('/fuel-deliveries/new', [DashboardController::class, 'newFuelDelivery'])->middleware('role:admin,supervisor');
     Route::post('/sales', [SaleController::class, 'store'])->middleware('role:admin,supervisor,despachador');
+    Route::get('/sales/{sale}/ticket', [SaleController::class, 'ticket'])
+    ->middleware('role:admin,supervisor,despachador')
+    ->name('sales.ticket');
+    
 Route::post('/fuel-deliveries', [FuelDeliveryController::class, 'store'])->middleware('role:admin,supervisor');
 Route::post('/expenses', [ExpenseController::class, 'store'])->middleware('role:admin,supervisor');
 Route::post('/fuel-prices', [FuelPriceController::class, 'store'])->middleware('role:admin,supervisor');

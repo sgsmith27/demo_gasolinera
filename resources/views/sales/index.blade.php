@@ -86,10 +86,21 @@ let html = `
             <td class="px-3 py-2">Q${Number(s.total_amount_q).toFixed(2)}</td>
             <td class="px-3 py-2">${s.status}</td>
             <td class="px-3 py-2">
+            <div class="flex flex-wrap items-center gap-2">
+              <a
+                href="/sales/${s.id}/ticket"
+                target="_blank"
+                class="underline text-emerald-600"
+              >
+                Ticket
+              </a>
+
               ${s.status === 'active'
                 ? `<button class="underline text-red-600" onclick="voidSale(${s.id})">Anular</button>`
-                : `<span class="text-gray-500">—</span>`}
-            </td>
+                : ``}
+            </div>
+          </td>
+
             <td class="px-3 py-2">
               ${
                 s.fel_status === 'certified'

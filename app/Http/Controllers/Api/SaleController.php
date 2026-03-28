@@ -14,6 +14,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Barryvdh\DomPDF\Facade\Pdf;
+
 
 class SaleController extends Controller
 {
@@ -144,6 +146,24 @@ public function list(\Illuminate\Http\Request $request): JsonResponse
     return response()->json([
         'sales' => $sales,
     ]);
+}
+
+public function ticket(Sale $sale)
+{
+    $sale->load([
+        'fuel',
+        'customer',
+        'shift',
+        'nozzle',
+        'user',
+        'latestFelDocument',
+    ]);
+
+    $pdf = Pdf::loadView('sales.ticket', [
+        'sale' => $sale,
+    ])->setPaper([0, 0, 136, 600], 'portrait');
+
+    return $pdf->stream('tck' . $sale->id . '.pdf');
 }
 
 
