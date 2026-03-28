@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\User;
 
 class Sale extends Model
 {
@@ -62,6 +63,11 @@ class Sale extends Model
     public function latestFelDocument()
     {
         return $this->hasOne(\App\Models\FelDocument::class)->latestOfMany();
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 
 

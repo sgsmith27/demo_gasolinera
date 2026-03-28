@@ -93,21 +93,33 @@ let html = `
             <td class="px-3 py-2">
               ${
                 s.fel_status === 'certified'
-                  ? `
-                    <div class="flex flex-col gap-1">
-                      <span class="inline-flex rounded-full bg-emerald-100 text-emerald-700 px-2 py-1 text-xs font-medium w-fit">
-                        Certificada
-                      </span>
-                      <div class="text-[11px] text-gray-500 break-all">
-                        ${s.fel_uuid ?? ''}
-                      </div>
-                      <div class="flex flex-wrap gap-2 mt-1">
-                        <a href="/fel-documents/${s.fel_id}" class="underline text-slate-700">Ver</a>
-                        <a href="/fel-documents/${s.fel_id}/pdf" target="_blank" class="underline text-indigo-600">PDF</a>
-                        <a href="/fel-documents/${s.fel_id}/xml" target="_blank" class="underline text-blue-600">XML</a>
-                        <a href="/fel-documents/${s.fel_id}/html" target="_blank" class="underline text-amber-600">HTML</a>
-                      </div>
-                    </div>
+                ? `
+                <div class="flex flex-col gap-1">
+                  <span class="inline-flex rounded-full bg-emerald-100 text-emerald-700 px-2 py-1 text-xs font-medium w-fit">
+                    Certificada
+                  </span>
+
+                  <div class="text-[11px] text-gray-500 break-all">
+                    ${s.fel_uuid ?? ''}
+                  </div>
+
+                  <div class="flex flex-wrap gap-2 mt-1">
+                    <a href="/fel-documents/${s.fel_id}" class="underline text-slate-700">Ver</a>
+                    <a href="/fel-documents/${s.fel_id}/pdf" target="_blank" class="underline text-indigo-600">PDF</a>
+                    <a href="/fel-documents/${s.fel_id}/xml" target="_blank" class="underline text-blue-600">XML</a>
+                    <a href="/fel-documents/${s.fel_id}/html" target="_blank" class="underline text-amber-600">HTML</a>
+                  </div>
+
+                  <div class="mt-1">
+                    <button
+                      type="button"
+                      onclick="cancelFel(${s.fel_id})"
+                      class="underline text-red-600"
+                    >
+                      Anular FEL
+                    </button>
+                  </div>
+                </div>
                   `
                   : s.fel_status === 'error'
                     ? `
@@ -201,6 +213,38 @@ async function voidSale(id) {
   }
 
   alert('Venta anulada correctamente');
+  loadSales();
+}
+
+async function cancelFel(felId) {
+  const reason = prompt('Motivo de anulación FEL:');
+  if (!reason) return;
+
+  const res = await fetch(`/fel-documents/${felId}/cancel`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'X-CSRF-TOKEN': csrfToken
+    },
+    body: JSON.stringify({ reason })
+  });
+
+  const text = await res.text();
+
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    data = null;
+  }
+
+  if (!res.ok) {
+    alert(data?.message ?? 'Error al anular FEL');
+    return;
+  }
+
+  alert(data?.message ?? 'Documento FEL anulado correctamente');
   loadSales();
 }
 

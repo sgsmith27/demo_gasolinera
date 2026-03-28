@@ -6,13 +6,21 @@ use App\Models\FelConfig;
 use App\Models\FelDocument;
 use App\Models\FelEvent;
 use App\Models\Sale;
-use Digifact\Fel\DigifactClient;
-use Illuminate\Support\Facades\Auth;
-use Throwable;
 use Carbon\Carbon;
+use Digifact\Fel\DigifactClient;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Throwable;
 
 class DigifactFelService
 {
+    public function __construct(
+        protected FelPayloadValidator $validator,
+        protected FelErrorMapper $errorMapper,
+    ) {
+    }
+
     protected function getActiveConfig(): FelConfig
     {
         return FelConfig::query()
@@ -34,133 +42,203 @@ class DigifactFelService
             'tipo_personeria' => $config->tipo_personeria,
         ]);
     }
-   
 
     public function issueInvoiceFromSale(Sale $sale): FelDocument
     {
         $sale->load(['fuel', 'customer']);
-
-        if ($sale->status !== 'active') {
-            throw new \RuntimeException('Solo se pueden facturar ventas activas.');
-        }
-
-        $existingCertified = FelDocument::query()
-            ->where('sale_id', $sale->id)
-            ->where('doc_type', 'FACT')
-            ->where('fel_status', 'certified')
-            ->first();
-
-        if ($existingCertified) {
-            throw new \RuntimeException('La venta ya tiene una factura FEL certificada.');
-        }
-
         $config = $this->getActiveConfig();
+        $this->validator->validateSaleInvoice($sale, $config);
+
+        [$document, $buyer, $items, $requestPayload] = DB::transaction(function () use ($sale, $config) {
+            $lockedSale = Sale::query()
+                ->whereKey($sale->id)
+                ->with(['fuel', 'customer'])
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $this->validator->validateSaleInvoice($lockedSale, $config);
+
+            $existingCertified = FelDocument::query()
+                ->where('sale_id', $lockedSale->id)
+                ->where('doc_type', 'FACT')
+                ->where('fel_status', 'certified')
+                ->lockForUpdate()
+                ->first();
+
+            if ($existingCertified) {
+                throw new \RuntimeException('La venta ya tiene una factura FEL certificada.');
+            }
+
+            $existingPending = FelDocument::query()
+                ->where('sale_id', $lockedSale->id)
+                ->where('doc_type', 'FACT')
+                ->where('fel_status', 'pending')
+                ->lockForUpdate()
+                ->first();
+
+            if ($existingPending) {
+                throw new \RuntimeException('Ya existe una certificación FEL en proceso para esta venta.');
+            }
+
+            $buyer = $this->resolveBuyer($lockedSale);
+            $items = $this->buildItems($lockedSale);
+
+            $requestPayload = [
+                'buyer' => $buyer,
+                'items' => $items,
+                'sale_id' => $lockedSale->id,
+                'customer_id' => $lockedSale->customer_id,
+                'environment' => $config->environment,
+            ];
+
+            try {
+                $document = FelDocument::create([
+                    'sale_id' => $lockedSale->id,
+                    'customer_id' => $lockedSale->customer_id,
+                    'doc_type' => 'FACT',
+                    'environment' => $config->environment,
+                    'fel_status' => 'pending',
+                    'receiver_taxid' => is_array($buyer) ? ($buyer['taxid'] ?? null) : $buyer,
+                    'receiver_name' => $lockedSale->customer?->name ?? 'CONSUMIDOR FINAL',
+                    'total_amount_q' => $lockedSale->total_amount_q,
+                    'request_payload' => $requestPayload,
+                    'created_by' => Auth::id(),
+                ]);
+            } catch (QueryException $e) {
+                throw new \RuntimeException('Ya existe una certificación FEL activa para esta venta.');
+            }
+
+            $this->logEvent(
+                $document,
+                'create',
+                'Documento FEL creado en estado pending',
+                payload: $requestPayload
+            );
+
+            return [$document, $buyer, $items, $requestPayload];
+        });
+
         $client = $this->makeClient($config);
-
-        $buyer = $this->resolveBuyer($sale);
-
-        $items = [[
-            'description' => 'Venta combustible ' . ($sale->fuel?->name ?? 'Combustible'),
-            'qty' => (float) $sale->gallons,
-            'price' => (float) $sale->price_per_gallon,
-            'type' => 'Bien',
-        ]];
-
-        $requestPayload = [
-            'buyer' => $buyer,
-            'items' => $items,
-            'sale_id' => $sale->id,
-        ];
-
-        $document = FelDocument::create([
-            'sale_id' => $sale->id,
-            'customer_id' => $sale->customer_id,
-            'doc_type' => 'FACT',
-            'environment' => $config->environment,
-            'fel_status' => 'pending',
-            'receiver_taxid' => is_array($buyer) ? ($buyer['taxid'] ?? null) : $buyer,
-            'receiver_name' => $sale->customer?->name ?? 'CONSUMIDOR FINAL',
-            'total_amount_q' => $sale->total_amount_q,
-            'request_payload' => $requestPayload,
-            'created_by' => Auth::id(),
-        ]);
-
-        FelEvent::create([
-            'fel_document_id' => $document->id,
-            'event_type' => 'create',
-            'description' => 'Documento FEL creado en estado pending',
-            'payload' => $requestPayload,
-        ]);
 
         try {
             $result = $client->invoice($buyer, $items);
 
             $responsePayload = [
-                'authNumber' => $result->authNumber ?? null,
-                'series' => $result->series ?? null,
-                'number' => $result->number ?? null,
-                'issuedAt' => $result->{'issuedAt'} ?? null,
-                'xml' => $result->xml ?? null,
-                'pdf' => $result->pdf ?? null,
-                'html' => $result->html ?? null,
-                'raw' => $result,
-            ];
+            'authNumber' => $result->authNumber ?? null,
+            'series' => $result->series ?? null,
+            'number' => $result->number ?? null,
+            'issueDateTime' => $result->issueDateTime ?? null,
+            'xml_base64' => $result->raw['responseData1'] ?? null,
+            'html_base64' => $result->raw['responseData2'] ?? null,
+            'pdf_base64' => $result->raw['responseData3'] ?? null,
+            'raw' => $result->raw ?? null,
+        ];
 
             $document->update([
                 'fel_status' => 'certified',
                 'uuid' => $result->authNumber ?? null,
                 'series' => $result->series ?? null,
                 'number' => $result->number ?? null,
-                'issued_at' => isset($result->{'issuedAt'})
-    ? \Carbon\Carbon::parse($result->{'issuedAt'})
-    : now(),
+                'issued_at' => $this->normalizeIssuedAt($result->issueDateTime ?? ($result->raw['issuedTimeStamp'] ?? null)),
                 'response_payload' => $responsePayload,
-                'xml' => $result->xml ?? null,
-                'pdf' => $result->pdf ?? null,
-                'html' => $result->html ?? null,
+                'xml' => $result->raw['responseData1'] ?? null,
+                'html' => $result->raw['responseData2'] ?? null,
+                'pdf' => $result->raw['responseData3'] ?? null,
                 'error_message' => null,
             ]);
 
-            FelEvent::create([
-                'fel_document_id' => $document->id,
-                'event_type' => 'success',
-                'description' => 'Documento FEL certificado correctamente',
-                'response' => $responsePayload,
-            ]);
+            $this->logEvent(
+                $document->fresh(),
+                'success',
+                'Documento FEL certificado correctamente',
+                payload: $requestPayload,
+                response: $responsePayload
+            );
 
             return $document->fresh();
         } catch (Throwable $e) {
+            $mapped = $this->errorMapper->map($e);
+
             $document->update([
                 'fel_status' => 'error',
-                'error_message' => $e->getMessage(),
+                'error_message' => $mapped['message'],
+                'response_payload' => array_merge($document->response_payload ?? [], [
+                    'error' => $mapped,
+                ]),
             ]);
 
-            FelEvent::create([
-                'fel_document_id' => $document->id,
-                'event_type' => 'error',
-                'description' => 'Error al certificar FEL',
-                'response' => [
-                    'message' => $e->getMessage(),
-                ],
-            ]);
+            $this->logEvent(
+                $document->fresh(),
+                'error',
+                'Error al certificar FEL',
+                payload: $requestPayload,
+                response: ['error' => $mapped]
+            );
 
-            throw $e;
+            throw new \RuntimeException($mapped['message'].' '.$mapped['hint'], previous: $e);
         }
     }
 
     protected function resolveBuyer(Sale $sale): string|array
     {
-        if (! $sale->customer || ! $sale->customer->nit) {
+        if (! $sale->customer) {
             return 'CF';
         }
 
-        return $sale->customer->nit;
+        $nit = trim((string) ($sale->customer->nit ?? ''));
+
+        if ($nit === '') {
+            return 'CF';
+        }
+
+        return strtoupper(str_replace([' ', '-'], '', $nit));
+    }
+
+    protected function buildItems(Sale $sale): array
+    {
+        return [[
+            'description' => 'Venta combustible '.($sale->fuel?->name ?? 'Combustible'),
+            'qty' => (float) $sale->gallons,
+            'price' => (float) $sale->price_per_gallon,
+            'type' => 'Bien',
+        ]];
+    }
+
+    protected function normalizeIssuedAt(mixed $issuedAt): Carbon
+    {
+        if (blank($issuedAt)) {
+            return now();
+        }
+
+        return Carbon::parse($issuedAt);
+    }
+
+    protected function logEvent(
+        FelDocument $document,
+        string $eventType,
+        string $description,
+        ?array $payload = null,
+        ?array $response = null,
+    ): void {
+        FelEvent::create([
+            'fel_document_id' => $document->id,
+            'event_type' => $eventType,
+            'description' => $description,
+            'payload' => $payload,
+            'response' => $response,
+        ]);
     }
 
     public function cancelDocument(FelDocument $document, string $reason): FelDocument
     {
+        $document->refresh();
+
         if ($document->fel_status !== 'certified') {
             throw new \RuntimeException('Solo se pueden anular documentos FEL certificados.');
+        }
+
+        if (blank($document->uuid)) {
+            throw new \RuntimeException('El documento no tiene UUID FEL para anular.');
         }
 
         $config = $this->getActiveConfig();
@@ -178,12 +256,12 @@ class DigifactFelService
             'reason' => $reason,
         ];
 
-        FelEvent::create([
-            'fel_document_id' => $document->id,
-            'event_type' => 'cancel',
-            'description' => 'Solicitud de anulación FEL',
-            'payload' => $payload,
-        ]);
+        $this->logEvent(
+            $document,
+            'cancel',
+            'Solicitud de anulación FEL',
+            payload: $payload
+        );
 
         try {
             $result = $client->cancel($document->uuid, $buyer, $issuedAt, $reason);
@@ -200,29 +278,34 @@ class DigifactFelService
                 'error_message' => null,
             ]);
 
-            FelEvent::create([
-                'fel_document_id' => $document->id,
-                'event_type' => 'success',
-                'description' => 'Documento FEL anulado correctamente',
-                'response' => $responsePayload,
-            ]);
+            $this->logEvent(
+                $document->fresh(),
+                'success',
+                'Documento FEL anulado correctamente',
+                payload: $payload,
+                response: $responsePayload
+            );
 
             return $document->fresh();
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
+            $mapped = $this->errorMapper->map($e);
+
             $document->update([
-                'error_message' => $e->getMessage(),
+                'error_message' => $mapped['message'],
+                'response_payload' => array_merge($document->response_payload ?? [], [
+                    'cancel_error' => $mapped,
+                ]),
             ]);
 
-            FelEvent::create([
-                'fel_document_id' => $document->id,
-                'event_type' => 'error',
-                'description' => 'Error al anular FEL',
-                'response' => [
-                    'message' => $e->getMessage(),
-                ],
-            ]);
+            $this->logEvent(
+                $document->fresh(),
+                'error',
+                'Error al anular FEL',
+                payload: $payload,
+                response: ['error' => $mapped]
+            );
 
-            throw $e;
+            throw new \RuntimeException($mapped['message'].' '.$mapped['hint'], previous: $e);
         }
     }
 }
