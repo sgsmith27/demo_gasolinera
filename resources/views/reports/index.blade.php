@@ -38,6 +38,11 @@
             <div class="text-sm text-gray-600">Ventas, gastos, cobros, pagos y balance final por rango.</div>
         </a>
 
+        <a href="/reports/fel" class="block bg-white rounded-xl shadow-sm border p-5 hover:shadow">
+            <div class="text-lg font-semibold">Reporte FEL</div>
+            <div class="text-sm text-gray-600">Libro de Ventas con estado FEL.</div>
+        </a>
+
     </div>
 </div>
 @endsection

@@ -40,6 +40,12 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/reports/sales-summary/pdf', [DashboardController::class, 'salesSummaryPdf'])->middleware('role:admin,supervisor');
     Route::get('/reports/cashier-close-range/pdf', [DashboardController::class, 'cashierCloseRangePdf'])->middleware('role:admin,supervisor');
+    Route::get('/reports/fel', [DashboardController::class, 'fel'])->middleware('role:admin,supervisor')
+    ->name('reports.fel');
+    Route::get('/reports/fel/pdf', [DashboardController::class, 'felPdf'])->middleware('role:admin,supervisor')    ->name('reports.fel.pdf');
+    Route::get('/reports/fel/excel', [DashboardController::class, 'felExcel'])
+    ->middleware('role:admin,supervisor')
+    ->name('reports.fel.excel');
 
     Route::get('/expenses', [DashboardController::class, 'expenses'])->middleware('role:admin,supervisor');
     Route::get('/expenses/new', [DashboardController::class, 'newExpense'])->middleware('role:admin,supervisor');

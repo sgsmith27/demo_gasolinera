@@ -102,10 +102,19 @@ class DigifactFelService
                     'doc_type' => 'FACT',
                     'environment' => $config->environment,
                     'fel_status' => 'pending',
-                    'receiver_taxid' => is_array($buyer) ? ($buyer['taxid'] ?? null) : $buyer,
-                    'receiver_name' => $lockedSale->fel_receiver_name
-                    ?? $lockedSale->customer?->name
-                    ?? 'CONSUMIDOR FINAL',
+                    'receiver_taxid' => is_array($buyer)
+                        ? ($buyer['taxid'] ?? 'CF')
+                        : ($buyer ?: 'CF'),
+
+                    'receiver_name' => (
+                        strtoupper(trim((string) ($lockedSale->fel_receiver_type ?? ''))) === 'CF'
+                            ? 'CONSUMIDOR FINAL'
+                            : (
+                                trim((string) ($lockedSale->fel_receiver_name ?? '')) !== ''
+                                    ? trim((string) $lockedSale->fel_receiver_name)
+                                    : ($lockedSale->customer?->name ?? 'CONSUMIDOR FINAL')
+                            )
+                    ),
                     'total_amount_q' => $lockedSale->total_amount_q,
                     'request_payload' => $requestPayload,
                     'created_by' => Auth::id(),

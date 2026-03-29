@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use App\Models\Sale;
 use App\Models\Expense;
+use App\Exports\FelReportExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class DashboardController extends Controller
 {
@@ -719,6 +722,116 @@ public function financialSummaryPdf()
     ));
 
     return $pdf->stream('balance-operativo.pdf');
+}
+
+public function fel(Request $request)
+{
+    $from = $request->input('from', now()->toDateString());
+    $to = $request->input('to', now()->toDateString());
+    $status = $request->input('status');
+
+    $query = \App\Models\FelDocument::query()
+        ->with(['sale.user'])
+        ->whereBetween('issued_at', [$from . ' 00:00:00', $to . ' 23:59:59']);
+
+    if ($status) {
+        $query->where('fel_status', $status);
+    }
+
+    $documents = $query
+        ->orderByDesc('issued_at')
+        ->get();
+
+    $validDocs = $documents->whereIn('fel_status', ['certified']);
+
+    $totals = [
+        'count' => $documents->count(),
+        'certified_count' => $documents->where('fel_status', 'certified')->count(),
+        'cancelled_count' => $documents->where('fel_status', 'cancelled')->count(),
+        'error_count' => $documents->where('fel_status', 'error')->count(),
+        'total_amount' => $validDocs->sum(function ($doc) {
+            return (float) ($doc->total_amount_q ?? $doc->sale->total_amount_q ?? 0);
+        }),
+    ];
+
+    $totals['taxable_base'] = $validDocs->sum(function ($doc) {
+        $total = (float) ($doc->total_amount_q ?? $doc->sale->total_amount_q ?? 0);
+        return $total / 1.12;
+    });
+
+    $totals['vat_amount'] = $validDocs->sum(function ($doc) {
+        $total = (float) ($doc->total_amount_q ?? $doc->sale->total_amount_q ?? 0);
+        return $total * 12 / 112;
+    });
+
+    return view('reports.fel', [
+        'documents' => $documents,
+        'from' => $from,
+        'to' => $to,
+        'status' => $status,
+        'totals' => $totals,
+    ]);
+}
+
+public function felPdf(Request $request)
+{
+    $from = $request->input('from', now()->toDateString());
+    $to = $request->input('to', now()->toDateString());
+    $status = $request->input('status');
+
+    $query = \App\Models\FelDocument::query()
+        ->with(['sale.user'])
+        ->whereBetween('issued_at', [$from . ' 00:00:00', $to . ' 23:59:59']);
+
+    if ($status) {
+        $query->where('fel_status', $status);
+    }
+
+    $documents = $query
+        ->orderByDesc('issued_at')
+        ->get();
+
+    $validDocs = $documents->where('fel_status', 'certified');
+
+    $totals = [
+        'count' => $documents->count(),
+        'certified_count' => $documents->where('fel_status', 'certified')->count(),
+        'cancelled_count' => $documents->where('fel_status', 'cancelled')->count(),
+        'error_count' => $documents->where('fel_status', 'error')->count(),
+        'total_amount' => $validDocs->sum(function ($doc) {
+            return (float) ($doc->total_amount_q ?? $doc->sale->total_amount_q ?? 0);
+        }),
+        'taxable_base' => $validDocs->sum(function ($doc) {
+            $total = (float) ($doc->total_amount_q ?? $doc->sale->total_amount_q ?? 0);
+            return $total / 1.12;
+        }),
+        'vat_amount' => $validDocs->sum(function ($doc) {
+            $total = (float) ($doc->total_amount_q ?? $doc->sale->total_amount_q ?? 0);
+            return $total * 12 / 112;
+        }),
+    ];
+
+    $pdf = Pdf::loadView('pdf.fel_pdf', [
+        'documents' => $documents,
+        'from' => $from,
+        'to' => $to,
+        'status' => $status,
+        'totals' => $totals,
+    ])->setPaper('a4', 'landscape');
+
+    return $pdf->download('reporte_fel_' . $from . '_a_' . $to . '.pdf');
+}
+
+public function felExcel(Request $request)
+{
+    $from = $request->input('from', now()->toDateString());
+    $to = $request->input('to', now()->toDateString());
+    $status = $request->input('status');
+
+    return Excel::download(
+        new FelReportExport($from, $to, $status),
+        'reporte_fel_' . $from . '_a_' . $to . '.xlsx'
+    );
 }
 
 }
