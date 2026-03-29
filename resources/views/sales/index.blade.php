@@ -13,6 +13,7 @@
 @endif
 
 @section('content')
+<div id="page_alert" class="hidden mb-4 rounded-xl border px-4 py-3 text-sm"></div>
 <div class="bg-white rounded-xl shadow-sm border p-5">
     <div class="flex items-center justify-between mb-4">
         <h1 class="text-xl font-semibold">Ventas</h1>
@@ -110,9 +111,56 @@
     </div>
 </div>
 
+<div id="reasonModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
+    <div class="w-full max-w-md rounded-xl bg-white shadow-xl">
+        <div class="flex items-center justify-between border-b px-4 py-3">
+            <h2 id="reason_modal_title" class="text-lg font-semibold text-slate-800">Ingresar motivo</h2>
+            <button type="button" id="btn_close_reason_modal" class="text-slate-500 hover:text-slate-700">
+                ✕
+            </button>
+        </div>
+
+        <div class="space-y-4 px-4 py-4">
+            <input type="hidden" id="reason_action_type">
+            <input type="hidden" id="reason_target_id">
+
+            <div>
+                <label for="reason_input" class="mb-1 block text-sm font-medium text-slate-700">
+                    Motivo
+                </label>
+                <textarea
+                    id="reason_input"
+                    rows="4"
+                    class="w-full rounded-lg border border-slate-300 px-3 py-2"
+                    placeholder="Escribe el motivo..."
+                ></textarea>
+            </div>
+        </div>
+
+        <div class="flex justify-end gap-2 border-t px-4 py-3">
+            <button
+                type="button"
+                id="btn_cancel_reason_modal"
+                class="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50"
+            >
+                Cancelar
+            </button>
+
+            <button
+                type="button"
+                id="btn_confirm_reason_modal"
+                class="rounded-lg bg-red-600 px-4 py-2 text-white hover:bg-red-700"
+            >
+                Confirmar
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
 const out = document.getElementById('out');
 const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+const pageAlert = document.getElementById('page_alert');
 
 const felModal = document.getElementById('felModal');
 const felSaleId = document.getElementById('fel_sale_id');
@@ -125,6 +173,113 @@ const btnLookupNit = document.getElementById('btn_lookup_nit');
 const btnConfirmFel = document.getElementById('btn_confirm_fel');
 const btnCloseFelModal = document.getElementById('btn_close_fel_modal');
 const btnCancelFelModal = document.getElementById('btn_cancel_fel_modal');
+
+const reasonModal = document.getElementById('reasonModal');
+const reasonModalTitle = document.getElementById('reason_modal_title');
+const reasonActionType = document.getElementById('reason_action_type');
+const reasonTargetId = document.getElementById('reason_target_id');
+const reasonInput = document.getElementById('reason_input');
+const btnCloseReasonModal = document.getElementById('btn_close_reason_modal');
+const btnCancelReasonModal = document.getElementById('btn_cancel_reason_modal');
+const btnConfirmReasonModal = document.getElementById('btn_confirm_reason_modal');
+
+function showAlert(message, type = 'success') {
+  const styles = {
+    success: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    error: 'border-rose-200 bg-rose-50 text-rose-700',
+    warning: 'border-amber-200 bg-amber-50 text-amber-700',
+    info: 'border-sky-200 bg-sky-50 text-sky-700',
+  };
+
+  pageAlert.className = `mb-4 rounded-xl border px-4 py-3 text-sm ${styles[type] ?? styles.info}`;
+  pageAlert.textContent = message;
+  pageAlert.classList.remove('hidden');
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function clearAlert() {
+  pageAlert.classList.add('hidden');
+  pageAlert.textContent = '';
+}
+
+function openReasonModal(actionType, targetId, title) {
+  reasonActionType.value = actionType;
+  reasonTargetId.value = targetId;
+  reasonModalTitle.textContent = title;
+  reasonInput.value = '';
+
+  reasonModal.classList.remove('hidden');
+  reasonModal.classList.add('flex');
+}
+
+function closeReasonModal() {
+  reasonModal.classList.add('hidden');
+  reasonModal.classList.remove('flex');
+  reasonInput.value = '';
+}
+
+async function submitReasonModal() {
+  const actionType = reasonActionType.value;
+  const targetId = reasonTargetId.value;
+  const reason = reasonInput.value.trim();
+
+  if (!reason) {
+    showAlert('Debes ingresar un motivo.', 'warning');
+    return;
+  }
+
+  const originalText = btnConfirmReasonModal.textContent;
+  btnConfirmReasonModal.textContent = 'Procesando...';
+  btnConfirmReasonModal.disabled = true;
+
+  try {
+    let url = '';
+    if (actionType === 'void_sale') {
+      url = `/sales/${targetId}/void`;
+    } else if (actionType === 'cancel_fel') {
+      url = `/fel-documents/${targetId}/cancel`;
+    } else {
+      showAlert('Acción no válida.', 'error');
+      return;
+    }
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-CSRF-TOKEN': csrfToken
+      },
+      body: JSON.stringify({ reason })
+    });
+
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); } catch { data = null; }
+
+    if (!res.ok) {
+      showAlert(data?.message ?? 'Error al procesar la solicitud.', 'error');
+      return;
+    }
+
+    closeReasonModal();
+
+    if (actionType === 'void_sale') {
+      showAlert('Venta anulada correctamente', 'success');
+    } else {
+      showAlert(data?.message ?? 'Documento FEL anulado correctamente', 'success');
+    }
+
+    loadSales();
+
+  } catch (e) {
+    showAlert('Error de conexión: ' + e.message, 'error');
+  } finally {
+    btnConfirmReasonModal.textContent = originalText;
+    btnConfirmReasonModal.disabled = false;
+  }
+}
 
 async function loadSales() {
   out.textContent = 'Cargando...';
@@ -292,59 +447,14 @@ async function loadSales() {
   out.innerHTML = html;
 }
 
-async function voidSale(id) {
-  const reason = prompt('Motivo de anulación:');
-  if (!reason) return;
-
-  const res = await fetch(`/sales/${id}/void`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'X-CSRF-TOKEN': csrfToken
-    },
-    body: JSON.stringify({ reason })
-  });
-
-  const text = await res.text();
-  let data;
-  try { data = JSON.parse(text); } catch { data = null; }
-
-  if (!res.ok) {
-    alert(data?.message ?? 'Error al anular venta');
-    return;
-  }
-
-  alert('Venta anulada correctamente');
-  loadSales();
+function voidSale(id) {
+  openReasonModal('void_sale', id, 'Motivo de anulación de venta');
 }
 
-async function cancelFel(felId) {
-  const reason = prompt('Motivo de anulación FEL:');
-  if (!reason) return;
-
-  const res = await fetch(`/fel-documents/${felId}/cancel`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'X-CSRF-TOKEN': csrfToken
-    },
-    body: JSON.stringify({ reason })
-  });
-
-  const text = await res.text();
-  let data;
-  try { data = JSON.parse(text); } catch { data = null; }
-
-  if (!res.ok) {
-    alert(data?.message ?? 'Error al anular FEL');
-    return;
-  }
-
-  alert(data?.message ?? 'Documento FEL anulado correctamente');
-  loadSales();
+function cancelFel(felId) {
+  openReasonModal('cancel_fel', felId, 'Motivo de anulación FEL');
 }
+
 
 function openFelModal(saleId) {
   felSaleId.value = saleId;
@@ -391,17 +501,17 @@ async function emitFelFromModal() {
   const receiverName = felReceiverName.value.trim();
 
   if (!saleId) {
-    alert('No se encontró la venta para emitir FEL.');
+    showAlert('No se encontró la venta para emitir FEL.', 'error');
     return;
   }
 
-  if (receiverType !== 'CF' && taxid === '') {
-    alert('Debes ingresar un NIT o CUI.');
+ if (receiverType !== 'CF' && taxid === '') {
+    showAlert('Debes ingresar un NIT o CUI.', 'warning');
     return;
   }
 
   if ((receiverType === 'NIT' || receiverType === 'CUI') && receiverName === '') {
-    alert('Debes ingresar el nombre del receptor FEL.');
+    showAlert('Debes ingresar el nombre del receptor FEL.', 'warning');
     return;
   }
 
@@ -433,28 +543,29 @@ async function emitFelFromModal() {
     }
 
     if (!res.ok) {
-      alert(data?.message ?? 'Error al emitir FEL');
+      showAlert(data?.message ?? 'Error al emitir FEL', 'error');
       return;
     }
 
     closeFelModal();
-    alert(data?.message ?? `Factura FEL emitida correctamente para la venta #${saleId}`);
+    showAlert(data?.message ?? `Factura FEL emitida correctamente para la venta #${saleId}`, 'success');
     window.open(`/sales/${saleId}/ticket`, '_blank');
     loadSales();
-
   } catch (e) {
-    alert('Error de conexión: ' + e.message);
+    showAlert('Error de conexión: ' + e.message, 'error');
   } finally {
     btnConfirmFel.textContent = originalText;
     btnConfirmFel.disabled = false;
   }
 }
 
+
+
 btnLookupNit.addEventListener('click', async () => {
   const nit = felTaxid.value.trim();
 
   if (!nit) {
-    alert('Ingresa un NIT.');
+    showAlert('Ingresa un NIT.', 'warning');
     return;
   }
 
@@ -476,17 +587,18 @@ btnLookupNit.addEventListener('click', async () => {
     const data = await res.json();
 
     if (!res.ok) {
-      alert(data.message ?? 'Error al consultar NIT');
+      showAlert(data.message ?? 'Error al consultar NIT', 'error');
       return;
     }
 
     if (data.data?.name) {
       felReceiverName.value = data.data.name;
+      showAlert('NIT consultado correctamente.', 'success');
     } else {
-      alert('NIT válido pero sin nombre retornado.');
+      showAlert('NIT válido pero sin nombre retornado.', 'warning');
     }
   } catch (e) {
-    alert('Error de conexión: ' + e.message);
+    showAlert('Error de conexión: ' + e.message, 'error');
   } finally {
     btnLookupNit.textContent = originalText;
     btnLookupNit.disabled = false;
@@ -497,10 +609,17 @@ btnConfirmFel.addEventListener('click', emitFelFromModal);
 btnCloseFelModal.addEventListener('click', closeFelModal);
 btnCancelFelModal.addEventListener('click', closeFelModal);
 felReceiverType.addEventListener('change', syncFelUI);
+btnCloseReasonModal.addEventListener('click', closeReasonModal);
+btnCancelReasonModal.addEventListener('click', closeReasonModal);
+btnConfirmReasonModal.addEventListener('click', submitReasonModal);
 
-document.getElementById('btn_load').addEventListener('click', loadSales);
+document.getElementById('btn_load').addEventListener('click', () => {
+  clearAlert();
+  loadSales();
+});
 
 syncFelUI();
 loadSales();
 </script>
+
 @endsection

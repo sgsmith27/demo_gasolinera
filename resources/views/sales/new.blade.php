@@ -12,6 +12,7 @@
 @endif
 
 @section('content')
+<div id="page_alert" class="hidden mb-4 rounded-xl border px-4 py-3 text-sm"></div>
 <div class="bg-white rounded-xl shadow-sm border p-5">
     <h1 class="text-xl font-semibold mb-4">Nueva venta</h1>
 
@@ -147,6 +148,29 @@
 </div>
 
 <script>
+
+const pageAlert = document.getElementById('page_alert');
+
+function showAlert(message, type = 'success') {
+  const styles = {
+    success: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    error: 'border-rose-200 bg-rose-50 text-rose-700',
+    warning: 'border-amber-200 bg-amber-50 text-amber-700',
+    info: 'border-sky-200 bg-sky-50 text-sky-700',
+  };
+
+  pageAlert.className = `mb-4 rounded-xl border px-4 py-3 text-sm ${styles[type] ?? styles.info}`;
+  pageAlert.textContent = message;
+  pageAlert.classList.remove('hidden');
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function clearAlert() {
+  pageAlert.classList.add('hidden');
+  pageAlert.textContent = '';
+}
+
 const mode = document.getElementById('sale_mode');
 const amountWrap = document.getElementById('amount_wrap');
 const gallonsWrap = document.getElementById('liters_wrap');
@@ -343,8 +367,8 @@ async function submitSale(extra = {}) {
         }
 
         if (!res.ok) {
-            result.innerHTML = `<span class="text-red-600">Error:</span> ${data.message ?? 'Error'}
-                <pre class="whitespace-pre-wrap">${JSON.stringify(data, null, 2)}</pre>`;
+            showAlert(`${data.message ?? 'Error'} (ver consola)`, 'error');
+            console.error('Error detalle:', data);
             return;
         }
 
@@ -352,33 +376,27 @@ async function submitSale(extra = {}) {
 
         if (extra.fel_emit === 1) {
           if (data.fel && data.fel.success) {
-              result.innerHTML = `
-                  <div class="text-green-700 font-medium">
-                      ✔ Venta #${data.data.id} registrada y FEL certificada
-                  </div>
-                  <div class="text-xs text-gray-600">
-                      UUID: ${data.fel.fel_uuid}
-                  </div>
-              `;
+              showAlert(
+                `Venta #${data.data.id} registrada y FEL certificada (UUID: ${data.fel.fel_uuid})`,
+                'success'
+              );
 
               // 🔥 abrir ticket automáticamente
               window.open(`/sales/${data.data.id}/ticket`, '_blank');
 
           } else {
-              result.innerHTML = `
-                  <div class="text-yellow-700 font-medium">
-                      ⚠ Venta registrada pero FEL falló
-                  </div>
-                  <div class="text-xs text-red-600">
-                      ${data.fel?.message ?? 'Error desconocido'}
-                  </div>
-              `;
+              showAlert(
+                `Venta registrada correctamente, pero la FEL falló: ${data.fel?.message ?? 'Error desconocido'}`,
+                'warning'
+              );
+
+              console.error('Error FEL:', data.fel);
           }
       } else {
-          result.innerHTML = `
-              <span class="text-green-700 font-medium">OK:</span>
-              Venta #${data.data.id} — Q${Number(data.data.total_amount_q).toFixed(2)} — ${gallons.toFixed(3)} gal
-          `;
+          showAlert(
+            `Venta registrada correctamente por Q${Number(data.data.total_amount_q).toFixed(2)} (${gallons.toFixed(3)} gal)`,
+            'success'
+          );
       }
 
         if (mode.value === 'amount') {
@@ -398,7 +416,8 @@ async function submitSale(extra = {}) {
         syncFelUI();
 
     } catch (e) {
-        result.innerHTML = `<span class="text-red-600">Error:</span> ${e.message}`;
+        showAlert(`Error de conexión: ${e.message}`, 'error');
+        console.error('Error JS:', e);
     } finally {
     btnSubmit.disabled = false;
     btnSaveAndFel.disabled = false;
