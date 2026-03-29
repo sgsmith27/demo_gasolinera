@@ -61,6 +61,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/sales/{sale}/ticket', [SaleController::class, 'ticket'])
     ->middleware('role:admin,supervisor,despachador')
     ->name('sales.ticket');
+    Route::post('/sales/fel/lookup-nit', [SaleController::class, 'lookupNit'])
+    ->middleware('role:admin,supervisor,despachador')
+    ->name('sales.fel.lookup-nit');
     
 Route::post('/fuel-deliveries', [FuelDeliveryController::class, 'store'])->middleware('role:admin,supervisor');
 Route::post('/expenses', [ExpenseController::class, 'store'])->middleware('role:admin,supervisor');

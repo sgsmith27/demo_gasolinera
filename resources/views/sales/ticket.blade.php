@@ -64,6 +64,21 @@
         .small {
             font-size: 9px;
         }
+
+        .qr-box {
+            text-align: center;
+            margin-top: 6px;
+        }
+
+        .qr-box img {
+            width: 90px;
+            height: 90px;
+        }
+
+        .qr-caption {
+            font-size: 8px;
+            margin-top: 2px;
+        }
     </style>
 </head>
 <body>
@@ -122,13 +137,37 @@
         <div class="line"></div>
 
         <table class="mb-1">
+            @php
+                $felDoc = $sale->latestFelDocument;
+                $ticketReceiverName = $felDoc?->receiver_name ?? $sale->customer?->name ?? 'CONSUMIDOR FINAL';
+                $ticketReceiverTaxid = $felDoc?->receiver_taxid ?? $sale->customer?->nit ?? 'CF';
+
+                $qrText = null;
+                $qrUrl = null;
+
+                if ($felDoc && in_array($felDoc->fel_status, ['certified', 'cancelled'])) {
+                    $qrText = implode("\n", array_filter([
+                        'UUID: ' . ($felDoc->uuid ?? '—'),
+                        'Serie: ' . ($felDoc->series ?? '—'),
+                        'Número: ' . ($felDoc->number ?? '—'),
+                        'Receptor: ' . $ticketReceiverName,
+                        'NIT/CUI: ' . $ticketReceiverTaxid,
+                        'Total: Q ' . number_format((float) $sale->total_amount_q, 2),
+                        'Fecha: ' . optional($felDoc->issued_at)->format('d/m/Y H:i:s'),
+                        'Estado FEL: ' . strtoupper($felDoc->fel_status ?? '—'),
+                    ]));
+
+                    $qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=' . urlencode($qrText);
+                }
+            @endphp
+
             <tr>
                 <td class="text-left bold">Cliente:</td>
-                <td class="text-right">{{ $sale->customer?->name ?? 'CONSUMIDOR FINAL' }}</td>
+                <td class="text-right">{{ $ticketReceiverName }}</td>
             </tr>
             <tr>
-                <td class="text-left bold">NIT:</td>
-                <td class="text-right">{{ $sale->customer?->nit ?? 'CF' }}</td>
+                <td class="text-left bold">NIT/CUI:</td>
+                <td class="text-right">{{ $ticketReceiverTaxid }}</td>
             </tr>
             <tr>
                 <td class="text-left bold">Pago:</td>
@@ -145,10 +184,6 @@
                     <td class="text-right">{{ strtoupper($sale->latestFelDocument->fel_status) }}</td>
                 </tr>
                 <tr>
-                    <td class="text-left bold">UUID:</td>
-                    <td class="text-right small">{{ $sale->latestFelDocument->uuid ?? '—' }}</td>
-                </tr>
-                <tr>
                     <td class="text-left bold">Serie:</td>
                     <td class="text-right">{{ $sale->latestFelDocument->series ?? '—' }}</td>
                 </tr>
@@ -157,6 +192,22 @@
                     <td class="text-right">{{ $sale->latestFelDocument->number ?? '—' }}</td>
                 </tr>
             </table>
+
+            <div class="line"></div>
+
+            <div class="center mb-1">
+                <div class="small" style="word-break: break-all;">
+                    {{ $sale->latestFelDocument->uuid ?? '—' }}
+                </div>
+            </div>
+        @endif
+        @if($qrUrl)
+            <div class="line"></div>
+
+            <div class="qr-box">
+                <img src="{{ $qrUrl }}" alt="">
+                <div class="qr-caption">QR FEL</div>
+            </div>
         @endif
 
         <div class="line"></div>

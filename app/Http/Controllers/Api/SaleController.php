@@ -15,6 +15,9 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Models\FelDocument;
+use App\Services\Fel\DigifactFelService;
+
 
 
 class SaleController extends Controller
@@ -26,9 +29,45 @@ class SaleController extends Controller
 
         $sale = $service->createSale($userId, $request->validated());
 
+        $felResult = null;
+
+        if ((int) $request->input('fel_emit') === 1) {
+            $receiverType = strtoupper(trim((string) $request->input('fel_receiver_type', 'CF')));
+            $receiverTaxid = trim((string) $request->input('fel_taxid', ''));
+            $receiverName = trim((string) $request->input('fel_receiver_name', ''));
+
+            if ($receiverType === 'CF') {
+                $sale->forceFill([
+                    'customer_id' => null,
+                ])->save();
+            } else {
+                $sale->setRelation('customer', null);
+                $sale->fel_receiver_type = $receiverType;
+                $sale->fel_receiver_taxid = $receiverTaxid;
+                $sale->fel_receiver_name = $receiverName;
+            }
+
+            try {
+                $felDocument = app(DigifactFelService::class)->issueInvoiceFromSale($sale);
+
+                $felResult = [
+                    'success' => true,
+                    'fel_id' => $felDocument->id,
+                    'fel_status' => $felDocument->fel_status,
+                    'fel_uuid' => $felDocument->uuid,
+                ];
+            } catch (\Throwable $e) {
+                $felResult = [
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ];
+            }
+        }
+
         return response()->json([
             'message' => 'Venta registrada',
             'data' => $sale,
+            'fel' => $felResult,
         ], 201);
     }
 
@@ -161,9 +200,34 @@ public function ticket(Sale $sale)
 
     $pdf = Pdf::loadView('sales.ticket', [
         'sale' => $sale,
-    ])->setPaper([0, 0, 136, 600], 'portrait');
+    ])->setPaper([0, 0, 136, 600], 'portrait')
+    ->setOption('isRemoteEnabled', true);
 
     return $pdf->stream('tck' . $sale->id . '.pdf');
+}
+
+public function lookupNit(\Illuminate\Http\Request $request): \Illuminate\Http\JsonResponse
+{
+    $nit = trim((string) $request->input('nit', ''));
+
+    if ($nit === '') {
+        return response()->json([
+            'message' => 'Debes ingresar un NIT.',
+        ], 422);
+    }
+
+    try {
+        $data = app(\App\Services\Fel\DigifactFelService::class)->lookupNit($nit);
+
+        return response()->json([
+            'message' => 'NIT consultado correctamente.',
+            'data' => $data,
+        ]);
+    } catch (\Throwable $e) {
+        return response()->json([
+            'message' => $e->getMessage(),
+        ], 422);
+    }
 }
 
 

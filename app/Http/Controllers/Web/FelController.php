@@ -11,12 +11,34 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
 use Illuminate\View\View;
 use Throwable;
+use Illuminate\Http\Request;
+
 
 class FelController extends Controller
 {
-    public function issueSaleInvoice(Sale $sale, DigifactFelService $service): RedirectResponse
+    public function issueSaleInvoice(Request $request, Sale $sale, DigifactFelService $service): RedirectResponse
     {
+        $receiverType = strtoupper(trim((string) $request->input('fel_receiver_type', 'CF')));
+        $receiverTaxid = trim((string) $request->input('fel_taxid', ''));
+        $receiverName = trim((string) $request->input('fel_receiver_name', ''));
+
+        if ($receiverType !== 'CF' && $receiverTaxid === '') {
+            return back()->withErrors([
+                'fel' => 'Debes ingresar un NIT o CUI para emitir FEL.',
+            ]);
+        }
+
+        if (in_array($receiverType, ['NIT', 'CUI'], true) && $receiverName === '') {
+            return back()->withErrors([
+                'fel' => 'Debes ingresar el nombre del receptor FEL.',
+            ]);
+        }
+
         try {
+            $sale->fel_receiver_type = $receiverType;
+            $sale->fel_receiver_taxid = $receiverTaxid;
+            $sale->fel_receiver_name = $receiverName;
+
             $service->issueInvoiceFromSale($sale);
 
             return back()->with('success', 'Factura FEL emitida correctamente para la venta #' . $sale->id);

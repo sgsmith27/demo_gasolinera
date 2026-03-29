@@ -56,6 +56,10 @@ class DigifactFelService
                 ->lockForUpdate()
                 ->firstOrFail();
 
+                $lockedSale->fel_receiver_type = $sale->fel_receiver_type ?? null;
+                $lockedSale->fel_receiver_taxid = $sale->fel_receiver_taxid ?? null;
+                $lockedSale->fel_receiver_name = $sale->fel_receiver_name ?? null;
+
             $this->validator->validateSaleInvoice($lockedSale, $config);
 
             $existingCertified = FelDocument::query()
@@ -99,7 +103,9 @@ class DigifactFelService
                     'environment' => $config->environment,
                     'fel_status' => 'pending',
                     'receiver_taxid' => is_array($buyer) ? ($buyer['taxid'] ?? null) : $buyer,
-                    'receiver_name' => $lockedSale->customer?->name ?? 'CONSUMIDOR FINAL',
+                    'receiver_name' => $lockedSale->fel_receiver_name
+                    ?? $lockedSale->customer?->name
+                    ?? 'CONSUMIDOR FINAL',
                     'total_amount_q' => $lockedSale->total_amount_q,
                     'request_payload' => $requestPayload,
                     'created_by' => Auth::id(),
@@ -181,17 +187,49 @@ class DigifactFelService
 
     protected function resolveBuyer(Sale $sale): string|array
     {
+        if (isset($sale->fel_receiver_type)) {
+            $receiverType = strtoupper(trim((string) $sale->fel_receiver_type));
+            $receiverTaxid = trim((string) ($sale->fel_receiver_taxid ?? ''));
+            $receiverName = trim((string) ($sale->fel_receiver_name ?? ''));
+
+            if ($receiverType === 'CF') {
+                return 'CF';
+            }
+
+            if ($receiverType === 'CUI' && $receiverTaxid !== '') {
+                return [
+                    'taxid' => $receiverTaxid,
+                    'type' => 'CUI',
+                    'name' => $receiverName !== '' ? $receiverName : 'CONSUMIDOR FINAL',
+                ];
+            }
+
+            if ($receiverType === 'NIT' && $receiverTaxid !== '') {
+                return strtoupper(str_replace([' ', '-'], '', $receiverTaxid));
+            }
+        }
+
         if (! $sale->customer) {
             return 'CF';
         }
 
-        $nit = trim((string) ($sale->customer->nit ?? ''));
+        $customer = $sale->customer;
 
-        if ($nit === '') {
-            return 'CF';
+        $cui = trim((string) ($customer->cui ?? ''));
+        if ($cui !== '') {
+            return [
+                'taxid' => $cui,
+                'type' => 'CUI',
+                'name' => $customer->name ?? 'CONSUMIDOR FINAL',
+            ];
         }
 
-        return strtoupper(str_replace([' ', '-'], '', $nit));
+        $nit = trim((string) ($customer->nit ?? ''));
+        if ($nit !== '') {
+            return strtoupper(str_replace([' ', '-'], '', $nit));
+        }
+
+        return 'CF';
     }
 
     protected function buildItems(Sale $sale): array
@@ -307,5 +345,41 @@ class DigifactFelService
 
             throw new \RuntimeException($mapped['message'].' '.$mapped['hint'], previous: $e);
         }
+    }
+
+    public function lookupNit(string $nit): array
+    {
+        $nit = strtoupper(str_replace([' ', '-'], '', trim($nit)));
+
+        if ($nit === '') {
+            throw new \RuntimeException('Debes ingresar un NIT.');
+        }
+
+        $config = $this->getActiveConfig();
+        $client = $this->makeClient($config);
+
+        $result = $client->lookupNit($nit);
+
+        // 🔥 extraer nombre real desde raw
+        $raw = (array) $result;
+
+        $name = $raw['name'] ?? null;
+
+        // fallback por si viene en otro formato
+        if (!$name && isset($raw['raw']['name'])) {
+            $name = $raw['raw']['name'];
+        }
+
+        // limpiar formato tipo: APELLIDO,APELLIDO,,NOMBRE,NOMBRE
+        if ($name) {
+            $parts = array_filter(explode(',', $name));
+            $name = implode(' ', $parts);
+        }
+
+        return [
+            'taxid' => $nit,
+            'name' => $name,
+            'raw' => $raw,
+        ];
     }
 }
