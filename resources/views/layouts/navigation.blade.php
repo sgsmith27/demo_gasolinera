@@ -158,6 +158,12 @@
                         class="flex items-center rounded-lg px-3 py-2 text-sm font-medium transition {{ request()->is('audit-logs/dashboard') ? 'bg-slate-800 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
                             Dashboard auditoría
                         </a>
+
+                        <a href="{{ url('/fel-configs') }}"
+                        @click="sidebarOpen = false"
+                        class="flex items-center rounded-lg px-3 py-2 text-sm font-medium transition {{ request()->is('fel-configs') ? 'bg-slate-800 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
+                            Configuracion FEL
+                        </a>
                     @endif
                 @endauth
             </div>

@@ -391,4 +391,33 @@ class DigifactFelService
             'raw' => $raw,
         ];
     }
+
+    public function testCredentials(array $configData): array
+    {
+        try {
+            $client = new \Digifact\Fel\DigifactClient([
+                'taxid' => $configData['taxid'],
+                'username' => $configData['username'],
+                'password' => $configData['password'],
+                'environment' => $configData['environment'],
+                'seller_name' => $configData['seller_name'] ?? 'TEST EMISOR',
+                'seller_address' => $configData['seller_address'] ?? 'CIUDAD',
+                'afiliacion_iva' => $configData['afiliacion_iva'] ?? 'GEN',
+                'tipo_personeria' => $configData['tipo_personeria'] ?? 'INDIVIDUAL',
+            ]);
+
+            $result = $client->lookupNit('68118198');
+
+            return [
+                'success' => true,
+                'message' => 'Credenciales válidas. Conexión FEL correcta.',
+                'raw' => $result,
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'success' => false,
+                'message' => 'Error de conexión: ' . $e->getMessage(),
+            ];
+        }
+    }
 }

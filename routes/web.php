@@ -18,6 +18,7 @@ use App\Http\Controllers\Web\AccountReceivableController;
 use App\Http\Controllers\Web\SupplierController;
 use App\Http\Controllers\Web\AccountPayableController;
 use App\Http\Controllers\Web\FelController;
+use App\Http\Controllers\Web\FelConfigController;
 
 Route::get('/', function () {
     return redirect()->route('dashboard');
@@ -89,6 +90,18 @@ Route::post('/pumps/{pump}/nozzles', [PumpController::class, 'storeNozzle'])->mi
 Route::put('/nozzles/{nozzle}', [PumpController::class, 'updateNozzle'])->middleware('role:admin,supervisor');
 Route::get('/nozzles/{nozzle}/edit', [PumpController::class, 'editNozzle'])->middleware('role:admin,supervisor');
 Route::get('/reports', [DashboardController::class, 'reports'])->middleware('role:admin,supervisor');
+Route::get('/fel-configs', [FelConfigController::class, 'index'])->middleware('role:admin')
+    ->name('fel-configs.index');
+Route::get('/fel-configs/create', [FelConfigController::class, 'create'])->middleware('role:admin')
+    ->name('fel-configs.create');
+Route::post('/fel-configs', [FelConfigController::class, 'store'])->middleware('role:admin')
+    ->name('fel-configs.store');
+Route::post('/fel-configs/{felConfig}/activate', [FelConfigController::class, 'activate'])
+    ->middleware('role:admin')
+    ->name('fel-configs.activate');
+Route::post('/fel-configs/test', [FelConfigController::class, 'test'])
+    ->middleware('role:admin')
+    ->name('fel-configs.test');
 });
 Route::post('/sales/{sale}/void', [SaleController::class, 'void'])->middleware('role:admin,supervisor');
 Route::get('/sales', [DashboardController::class, 'salesIndex'])->middleware('role:admin,supervisor');
@@ -156,6 +169,8 @@ Route::get('/fel-documents/{felDocument}/html', [FelController::class, 'download
     ->middleware('role:admin,supervisor');
 Route::post('/fel-documents/{felDocument}/cancel', [FelController::class, 'cancel'])
     ->middleware('role:admin,supervisor');
+
+
 
 
 require __DIR__.'/auth.php';
