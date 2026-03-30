@@ -84,8 +84,8 @@
 <body>
     <div class="ticket">
         <div class="center mb-2">
-            <div class="title">ESTACIÓN DE SERVICIO</div>
-            <div class="subtitle">Ticket de venta</div>
+            <div class="title">GASOLINERA D-R SAN JUAN</div>
+            <div class="subtitle">Factura Electrónica</div>
         </div>
 
         <div class="line"></div>

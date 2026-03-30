@@ -19,7 +19,12 @@
                 </a>
 
                 @if(in_array(auth()->user()->role, ['admin', 'supervisor']))
-                    <a href="/fuel-deliveries/new"
+                <a href="/sales"
+                       class="inline-flex items-center rounded-xl bg-slate-800/60 border border-slate-600 px-4 py-2 text-sm font-medium hover:bg-slate-700 transition">
+                        Ventas Generales
+                    </a>    
+                
+                <a href="/fuel-deliveries/new"
                        class="inline-flex items-center rounded-xl bg-slate-800/60 border border-slate-600 px-4 py-2 text-sm font-medium hover:bg-slate-700 transition">
                         Abastecer
                     </a>
