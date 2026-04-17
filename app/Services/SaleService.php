@@ -62,6 +62,30 @@ class SaleService
             $gallons = round($gallons, 3);
             $totalQ = round($totalQ, 2);
 
+            /** =========================
+             * CÁLCULO FISCAL (IDP + IVA)
+             * ========================= */
+            $fuel = $nozzle->fuel; // ya viene relacionado por fuel_id
+
+            $idpPerGallon = (float) ($fuel->idp_amount_per_gallon ?? 0);
+
+            // 1. IDP total
+            $idpTotal = $gallons * $idpPerGallon;
+
+            // 2. Subtotal sin IDP
+            $subtotalSinIdp = $totalQ - $idpTotal;
+
+            // 3. Base imponible (sin IVA)
+            $taxableBase = $subtotalSinIdp / 1.12;
+
+            // 4. IVA
+            $vatAmount = $subtotalSinIdp - $taxableBase;
+
+            // Redondeos finales
+            $idpTotal = round($idpTotal, 2);
+            $taxableBase = round($taxableBase, 2);
+            $vatAmount = round($vatAmount, 2);
+
             if ($gallons <= 0) {
                 throw ValidationException::withMessages([
                     'gallons' => 'Los galones calculados deben ser mayores a 0.',
@@ -104,6 +128,9 @@ class SaleService
                 'notes' => $notes,
                 'shift_id' => $shift->id,
                 'customer_id' => $data['customer_id'] ?? null,
+                'idp_amount_q' => $idpTotal,
+                'vat_amount_q' => $vatAmount,
+                'taxable_base_q' => $taxableBase,
             ]);
 
             if ($paymentMethod === 'credit') {

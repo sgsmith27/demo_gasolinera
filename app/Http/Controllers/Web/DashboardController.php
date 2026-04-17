@@ -581,6 +581,15 @@ public function financialSummary()
         ->selectRaw('COUNT(*) as total_items')
         ->selectRaw('COALESCE(SUM(amount_q),0) as total_q')
         ->first();
+    
+    $fuelDeliveries = DB::table('fuel_deliveries')
+    ->whereBetween('delivered_at', [
+        Carbon::parse($from)->startOfDay(),
+        Carbon::parse($to)->endOfDay(),
+    ])
+    ->selectRaw('COUNT(*) as total_items')
+    ->selectRaw('COALESCE(SUM(total_cost_q),0) as total_q')
+    ->first();
 
     $receivableCollections = DB::table('account_receivable_payments')
         ->whereBetween('paid_at', [
@@ -612,12 +621,21 @@ public function financialSummary()
 
     $salesTotal = (float) ($sales->total_q ?? 0);
     $expensesTotal = (float) ($expenses->total_q ?? 0);
+    $fuelDeliveriesTotal = (float) ($fuelDeliveries->total_q ?? 0);
     $receivableCollectionsTotal = (float) ($receivableCollections->total_q ?? 0);
     $payablePaymentsTotal = (float) ($payablePayments->total_q ?? 0);
 
     $finalBalance = round(
-        $salesTotal + $receivableCollectionsTotal - $expensesTotal - $payablePaymentsTotal,
-        2
+    $salesTotal
+    + $receivableCollectionsTotal
+    - $fuelDeliveriesTotal
+    - $expensesTotal
+    - $payablePaymentsTotal,
+    2
+    ) ;
+    $grossMargin = round(
+    $salesTotal - $fuelDeliveriesTotal,
+    2
     );
 
     return view('reports.financial-summary', compact(
@@ -630,7 +648,9 @@ public function financialSummary()
         'payablePayments',
         'pendingReceivables',
         'pendingPayables',
-        'finalBalance'
+        'finalBalance',
+        'fuelDeliveries',
+        'grossMargin'
     ));
 }
 
@@ -659,6 +679,15 @@ public function financialSummaryPdf()
         ->orderBy('payment_method')
         ->selectRaw('payment_method, COUNT(*) as total_sales, COALESCE(SUM(total_amount_q),0) as total_q')
         ->get();
+
+    $fuelDeliveries = DB::table('fuel_deliveries')
+    ->whereBetween('delivered_at', [
+        Carbon::parse($from)->startOfDay(),
+        Carbon::parse($to)->endOfDay(),
+    ])
+    ->selectRaw('COUNT(*) as total_items')
+    ->selectRaw('COALESCE(SUM(total_cost_q),0) as total_q')
+    ->first();
 
     $expenses = DB::table('expenses')
         ->where('status', 'active')
@@ -699,13 +728,19 @@ public function financialSummaryPdf()
         ->first();
 
     $salesTotal = (float) ($sales->total_q ?? 0);
+    $fuelDeliveriesTotal = (float) ($fuelDeliveries->total_q ?? 0);
     $expensesTotal = (float) ($expenses->total_q ?? 0);
     $receivableCollectionsTotal = (float) ($receivableCollections->total_q ?? 0);
     $payablePaymentsTotal = (float) ($payablePayments->total_q ?? 0);
 
     $finalBalance = round(
-        $salesTotal + $receivableCollectionsTotal - $expensesTotal - $payablePaymentsTotal,
+        $salesTotal  + $receivableCollectionsTotal -  $fuelDeliveriesTotal - $expensesTotal - $payablePaymentsTotal,
         2
+    );
+
+    $grossMargin = round(
+    $salesTotal - $fuelDeliveriesTotal,
+    2
     );
 
     $pdf = Pdf::loadView('pdf.financial-summary', compact(
@@ -718,7 +753,9 @@ public function financialSummaryPdf()
         'payablePayments',
         'pendingReceivables',
         'pendingPayables',
-        'finalBalance'
+        'finalBalance',
+        'fuelDeliveries',
+        'grossMargin'
     ));
 
     return $pdf->stream('balance-operativo.pdf');
@@ -742,27 +779,30 @@ public function fel(Request $request)
         ->orderByDesc('issued_at')
         ->get();
 
-    $validDocs = $documents->whereIn('fel_status', ['certified']);
+    $validDocs = $documents->where('fel_status', 'certified');
 
-    $totals = [
-        'count' => $documents->count(),
-        'certified_count' => $documents->where('fel_status', 'certified')->count(),
-        'cancelled_count' => $documents->where('fel_status', 'cancelled')->count(),
-        'error_count' => $documents->where('fel_status', 'error')->count(),
-        'total_amount' => $validDocs->sum(function ($doc) {
-            return (float) ($doc->total_amount_q ?? $doc->sale->total_amount_q ?? 0);
-        }),
-    ];
+$totals = [
+    'count' => $documents->count(),
+    'certified_count' => $documents->where('fel_status', 'certified')->count(),
+    'cancelled_count' => $documents->where('fel_status', 'cancelled')->count(),
+    'error_count' => $documents->where('fel_status', 'error')->count(),
 
-    $totals['taxable_base'] = $validDocs->sum(function ($doc) {
-        $total = (float) ($doc->total_amount_q ?? $doc->sale->total_amount_q ?? 0);
-        return $total / 1.12;
-    });
+    'total_amount' => $validDocs->sum(function ($doc) {
+        return (float) ($doc->total_amount_q ?? $doc->sale->total_amount_q ?? 0);
+    }),
 
-    $totals['vat_amount'] = $validDocs->sum(function ($doc) {
-        $total = (float) ($doc->total_amount_q ?? $doc->sale->total_amount_q ?? 0);
-        return $total * 12 / 112;
-    });
+    'taxable_base' => $validDocs->sum(function ($doc) {
+        return (float) ($doc->taxable_base_q ?? 0);
+    }),
+
+    'reported_vat_amount' => $validDocs->sum(function ($doc) {
+        return (float) ($doc->vat_amount_q ?? 0);
+    }),
+
+    'reported_idp_amount' => $validDocs->sum(function ($doc) {
+        return (float) ($doc->idp_amount_q ?? 0);
+    }),
+];
 
     return view('reports.fel', [
         'documents' => $documents,
@@ -791,23 +831,28 @@ public function felPdf(Request $request)
         ->orderByDesc('issued_at')
         ->get();
 
-    $validDocs = $documents->where('fel_status', 'certified');
+       $validDocs = $documents->where('fel_status', 'certified');
 
     $totals = [
         'count' => $documents->count(),
         'certified_count' => $documents->where('fel_status', 'certified')->count(),
         'cancelled_count' => $documents->where('fel_status', 'cancelled')->count(),
         'error_count' => $documents->where('fel_status', 'error')->count(),
+
         'total_amount' => $validDocs->sum(function ($doc) {
             return (float) ($doc->total_amount_q ?? $doc->sale->total_amount_q ?? 0);
         }),
+
         'taxable_base' => $validDocs->sum(function ($doc) {
-            $total = (float) ($doc->total_amount_q ?? $doc->sale->total_amount_q ?? 0);
-            return $total / 1.12;
+            return (float) ($doc->taxable_base_q ?? 0);
         }),
-        'vat_amount' => $validDocs->sum(function ($doc) {
-            $total = (float) ($doc->total_amount_q ?? $doc->sale->total_amount_q ?? 0);
-            return $total * 12 / 112;
+
+        'reported_vat_amount' => $validDocs->sum(function ($doc) {
+            return (float) ($doc->vat_amount_q ?? 0);
+        }),
+
+        'reported_idp_amount' => $validDocs->sum(function ($doc) {
+            return (float) ($doc->idp_amount_q ?? 0);
         }),
     ];
 

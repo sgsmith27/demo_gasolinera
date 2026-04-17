@@ -39,6 +39,9 @@ class FelReportExport implements FromCollection, WithHeadings
                     'cliente' => $doc->receiver_name ?? 'CONSUMIDOR FINAL',
                     'nit_cui' => $doc->receiver_taxid ?? 'CF',
                     'total' => (float) ($doc->total_amount_q ?? $doc->sale->total_amount_q ?? 0),
+                    'base' => (float) ($doc->taxable_base_q ?? 0),
+                    'iva' => (float) ($doc->vat_amount_q ?? 0),
+                    'idp' => (float) ($doc->idp_amount_q ?? 0),
                     'estado' => $doc->fel_status,
                     'usuario' => $doc->sale->user->name ?? '—',
                 ];
@@ -56,6 +59,9 @@ class FelReportExport implements FromCollection, WithHeadings
             'Cliente',
             'NIT/CUI',
             'Total',
+            'Base',
+            'IVA',
+            'IDP',
             'Estado FEL',
             'Usuario',
         ];

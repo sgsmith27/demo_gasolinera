@@ -6,7 +6,7 @@
         <div class="mb-4">
             <h1 class="text-xl font-semibold text-slate-800">Balance operativo</h1>
             <p class="text-sm text-slate-500">
-                Ventas + Cobros CxC - Gastos - Pagos CxP
+                Ventas + Cobros CxC - Abastecimientos - Gastos - Pagos CxP
             </p>
         </div>
 
@@ -35,7 +35,7 @@
             </div>
         </form>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-5">
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-7 gap-4 mb-5">
             <div class="rounded-2xl bg-emerald-50 border border-emerald-200 p-4">
                 <div class="text-sm text-emerald-700">Ventas</div>
                 <div class="text-2xl font-bold mt-2">Q{{ number_format((float)($sales->total_q ?? 0), 2) }}</div>
@@ -44,6 +44,11 @@
             <div class="rounded-2xl bg-blue-50 border border-blue-200 p-4">
                 <div class="text-sm text-blue-700">Cobros CxC</div>
                 <div class="text-2xl font-bold mt-2">Q{{ number_format((float)($receivableCollections->total_q ?? 0), 2) }}</div>
+            </div>
+
+            <div class="rounded-2xl bg-cyan-50 border border-cyan-200 p-4">
+                <div class="text-sm text-cyan-700">Abastecimientos</div>
+                <div class="text-2xl font-bold mt-2">Q{{ number_format((float)($fuelDeliveries->total_q ?? 0), 2) }}</div>
             </div>
 
             <div class="rounded-2xl bg-rose-50 border border-rose-200 p-4">
@@ -60,6 +65,14 @@
                 <div class="text-sm text-slate-700">Balance final</div>
                 <div class="text-2xl font-bold mt-2">Q{{ number_format((float)$finalBalance, 2) }}</div>
             </div>
+
+                    <div class="rounded-2xl bg-indigo-50 border border-indigo-200 p-4">
+            <div class="text-sm text-indigo-700">Margen bruto</div>
+            <div class="text-2xl font-bold mt-2">
+                Q{{ number_format((float)$grossMargin, 2) }}
+            </div>
+        </div>
+
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
@@ -93,6 +106,12 @@
                                 <td class="px-4 py-3">{{ $sales->total_sales ?? 0 }}</td>
                                 <td class="px-4 py-3">Q{{ number_format((float)($sales->total_q ?? 0), 2) }}</td>
                             </tr>
+                            <tr>
+                                <td class="px-4 py-3">Abastecimientos</td>
+                                <td class="px-4 py-3">{{ $fuelDeliveries->total_items ?? 0 }}</td>
+                                <td class="px-4 py-3">Q{{ number_format((float)($fuelDeliveries->total_q ?? 0), 2) }}</td>
+                            </tr>
+
                             <tr>
                                 <td class="px-4 py-3">Gastos</td>
                                 <td class="px-4 py-3">{{ $expenses->total_items ?? 0 }}</td>

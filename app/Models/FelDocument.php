@@ -28,6 +28,9 @@ class FelDocument extends Model
         'html',
         'error_message',
         'created_by',
+        'idp_amount_q',
+        'vat_amount_q',
+        'taxable_base_q',
     ];
 
     protected $casts = [
@@ -35,6 +38,9 @@ class FelDocument extends Model
         'request_payload' => 'array',
         'response_payload' => 'array',
         'total_amount_q' => 'decimal:2',
+        'idp_amount_q' => 'decimal:2',
+        'vat_amount_q' => 'decimal:2',
+        'taxable_base_q' => 'decimal:2',
     ];
 
     public function sale()

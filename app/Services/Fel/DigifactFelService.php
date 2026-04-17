@@ -31,6 +31,13 @@ class DigifactFelService
 
     protected function makeClient(FelConfig $config): DigifactClient
     {
+        $petroleoRates = \App\Models\Fuel::query()
+            ->whereNotNull('petroleo_code')
+            ->where('petroleo_code', '!=', '')
+            ->pluck('idp_amount_per_gallon', 'petroleo_code')
+            ->map(fn ($value) => (float) $value)
+            ->toArray();
+
         return new DigifactClient([
             'taxid' => $config->taxid,
             'username' => $config->username,
@@ -40,6 +47,7 @@ class DigifactFelService
             'seller_address' => $config->seller_address,
             'afiliacion_iva' => $config->afiliacion_iva,
             'tipo_personeria' => $config->tipo_personeria,
+            'petroleo_rates' => $petroleoRates,
         ]);
     }
 
@@ -118,6 +126,10 @@ class DigifactFelService
                     'total_amount_q' => $lockedSale->total_amount_q,
                     'request_payload' => $requestPayload,
                     'created_by' => Auth::id(),
+                    'idp_amount_q' => $sale->idp_amount_q,
+                    'vat_amount_q' => $sale->vat_amount_q,
+                    'taxable_base_q' => $sale->taxable_base_q,
+                    
                 ]);
             } catch (QueryException $e) {
                 throw new \RuntimeException('Ya existe una certificación FEL activa para esta venta.');
@@ -136,18 +148,18 @@ class DigifactFelService
         $client = $this->makeClient($config);
 
         try {
-            $result = $client->invoice($buyer, $items);
+            $result = $client->fuelInvoice($buyer, $items);           
 
             $responsePayload = [
-            'authNumber' => $result->authNumber ?? null,
-            'series' => $result->series ?? null,
-            'number' => $result->number ?? null,
-            'issueDateTime' => $result->issueDateTime ?? null,
-            'xml_base64' => $result->raw['responseData1'] ?? null,
-            'html_base64' => $result->raw['responseData2'] ?? null,
-            'pdf_base64' => $result->raw['responseData3'] ?? null,
-            'raw' => $result->raw ?? null,
-        ];
+                'authNumber' => $result->authNumber ?? null,
+                'series' => $result->series ?? null,
+                'number' => $result->number ?? null,
+                'issueDateTime' => $result->issueDateTime ?? null,
+                'xml_base64' => $result->raw['responseData1'] ?? null,
+                'html_base64' => $result->raw['responseData2'] ?? null,
+                'pdf_base64' => $result->raw['responseData3'] ?? null,
+                'raw' => $result->raw ?? null,
+            ];
 
             $document->update([
                 'fel_status' => 'certified',
@@ -160,6 +172,10 @@ class DigifactFelService
                 'html' => $result->raw['responseData2'] ?? null,
                 'pdf' => $result->raw['responseData3'] ?? null,
                 'error_message' => null,
+                            // impuestos ya persistidos
+                'idp_amount_q' => $sale->idp_amount_q ?? 0,
+                'vat_amount_q' => $sale->vat_amount_q ?? 0,
+                'taxable_base_q' => $sale->taxable_base_q ?? 0,
             ]);
 
             $this->logEvent(
@@ -243,12 +259,18 @@ class DigifactFelService
 
     protected function buildItems(Sale $sale): array
     {
-        return [[
-            'description' => 'Venta combustible '.($sale->fuel?->name ?? 'Combustible'),
+        $item = [
+            'description' => strtoupper($sale->fuel?->name ?? 'COMBUSTIBLE'),
             'qty' => (float) $sale->gallons,
             'price' => (float) $sale->price_per_gallon,
             'type' => 'Bien',
-        ]];
+        ];
+
+        if (!blank($sale->fuel?->petroleo_code)) {
+            $item['petroleo_code'] = (string) $sale->fuel->petroleo_code;
+        }
+
+        return [$item];
     }
 
     protected function normalizeIssuedAt(mixed $issuedAt): Carbon

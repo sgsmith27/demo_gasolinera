@@ -36,7 +36,7 @@
     </a>
     </form>
 
-    <div class="grid md:grid-cols-7 gap-3 mb-4">
+    <div class="grid md:grid-cols-8 gap-3 mb-4">
     <div class="rounded-xl border bg-slate-50 p-4">
         <div class="text-xs text-slate-500">Documentos</div>
         <div class="text-lg font-semibold text-slate-800">{{ $totals['count'] }}</div>
@@ -72,9 +72,16 @@
     </div>
 
     <div class="rounded-xl border bg-violet-50 p-4">
-        <div class="text-xs text-violet-600">IVA débito fiscal estimado 12%</div>
+        <div class="text-xs text-violet-600">IVA reportado</div>
         <div class="text-lg font-semibold text-violet-700">
-            Q{{ number_format((float) $totals['vat_amount'], 2) }}
+            Q{{ number_format((float) $totals['reported_vat_amount'], 2) }}
+        </div>
+    </div>
+
+    <div class="rounded-xl border bg-fuchsia-50 p-4">
+        <div class="text-xs text-fuchsia-600">IDP reportado</div>
+        <div class="text-lg font-semibold text-fuchsia-700">
+            Q{{ number_format((float) $totals['reported_idp_amount'], 2) }}
         </div>
     </div>
 
@@ -93,6 +100,9 @@
                     <th class="px-3 py-2">Cliente</th>
                     <th class="px-3 py-2">NIT/CUI</th>
                     <th class="px-3 py-2">Total</th>
+                    <th class="px-3 py-2">Base</th>
+                    <th class="px-3 py-2">IVA</th>
+                    <th class="px-3 py-2">IDP</th>
                     <th class="px-3 py-2">Estado</th>
                     <th class="px-3 py-2">Usuario</th>
                 </tr>
@@ -114,6 +124,15 @@
                         </td>
                         <td class="px-3 py-2">
                             Q{{ number_format((float) ($doc->total_amount_q ?? $doc->sale->total_amount_q ?? 0), 2) }}
+                        </td>
+                        <td class="px-3 py-2">
+                            Q{{ number_format((float) ($doc->taxable_base_q ?? 0), 2) }}
+                        </td>
+                        <td class="px-3 py-2">
+                            Q{{ number_format((float) ($doc->vat_amount_q ?? 0), 2) }}
+                        </td>
+                        <td class="px-3 py-2">
+                            Q{{ number_format((float) ($doc->idp_amount_q ?? 0), 2) }}
                         </td>
                         <td class="px-3 py-2">
                             @if($doc->fel_status === 'certified')

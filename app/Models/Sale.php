@@ -25,6 +25,9 @@ class Sale extends Model
         'void_reason',
         'shift_id',
         'customer_id',
+        'idp_amount_q',
+        'vat_amount_q',
+        'taxable_base_q',
     ];
 
     protected $casts = [
@@ -32,7 +35,10 @@ class Sale extends Model
         'gallons' => 'decimal:3',
         'price_per_gallon' => 'decimal:4',
         'total_amount_q' => 'decimal:2',
-        'voided_at' => 'datetime',        
+        'voided_at' => 'datetime',
+        'idp_amount_q' => 'decimal:2',
+        'vat_amount_q' => 'decimal:2',
+        'taxable_base_q' => 'decimal:2',        
     ];
 
     public function nozzle(): BelongsTo

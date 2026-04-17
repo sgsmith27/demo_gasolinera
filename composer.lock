@@ -4,20 +4,20 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "75470bd27090d7ef41e39a218f78f994",
+    "content-hash": "9146bd3e9a3dff4acad51be800b0bfd0",
     "packages": [
         {
             "name": "aalonzolu/digifact",
-            "version": "v2.0.2",
+            "version": "v2.2.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/aalonzolu/digifact.git",
-                "reference": "7253996134cb5f524af424666618de44f61b94e0"
+                "reference": "c88a90f4f8224d428ba16b5524f910237b2fe0f0"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/aalonzolu/digifact/zipball/7253996134cb5f524af424666618de44f61b94e0",
-                "reference": "7253996134cb5f524af424666618de44f61b94e0",
+                "url": "https://api.github.com/repos/aalonzolu/digifact/zipball/c88a90f4f8224d428ba16b5524f910237b2fe0f0",
+                "reference": "c88a90f4f8224d428ba16b5524f910237b2fe0f0",
                 "shasum": ""
             },
             "require": {
@@ -56,9 +56,9 @@
             ],
             "support": {
                 "issues": "https://github.com/aalonzolu/digifact/issues",
-                "source": "https://github.com/aalonzolu/digifact/tree/v2.0.2"
+                "source": "https://github.com/aalonzolu/digifact/tree/v2.2.0"
             },
-            "time": "2026-03-27T01:16:32+00:00"
+            "time": "2026-04-15T18:43:09+00:00"
         },
         {
             "name": "barryvdh/laravel-dompdf",

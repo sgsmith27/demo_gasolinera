@@ -34,9 +34,21 @@ async function load() {
   let html = `
     <div class="mb-4">
       <div class="font-medium">Totales</div>
-      <div>Ventas: ${totals.total_sales} — Q${totals.total_q} — ${totals.total_gallons} gal</div>
+      <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative">
+  Ventas: ${totals.total_sales} — 
+  Q${Number(totals.total_q).toFixed(2)} — 
+  ${Number(totals.total_gallons).toFixed(3)} gal
+</div>
     </div>
   `;
+  const labels = {
+  pump_code: 'Bomba',
+  sales_count: 'Ventas',
+  total_q: 'Total (Q)',
+  total_gallons: 'Galones',
+  user_name: 'Despachador',
+  fuel_name: 'Combustible',
+  };
 
   function table(title, rows, cols) {
     let t = `<div class="mb-5">
@@ -45,12 +57,24 @@ async function load() {
       <table class="min-w-full text-left text-sm">
         <thead class="bg-gray-100">
           <tr>
-            ${cols.map(c => `<th class="px-3 py-2">${c}</th>`).join('')}
+            ${cols.map(c => `<th class="px-3 py-2">${labels[c] ?? c}</th>`).join('')}
           </tr>
         </thead>
         <tbody>
           ${rows.map(r => `<tr class="border-t">
-            ${cols.map(c => `<td class="px-3 py-2">${r[c]}</td>`).join('')}
+            ${cols.map(c => {
+  let value = r[c];
+
+  if (c === 'total_q') {
+    value = 'Q' + Number(value).toFixed(2);
+  }
+
+  if (c === 'total_gallons') {
+    value = Number(value).toFixed(3) + ' gal';
+  }
+
+  return `<td class="px-3 py-2">${value}</td>`;
+}).join('')}
           </tr>`).join('')}
         </tbody>
       </table>

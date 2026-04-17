@@ -56,9 +56,17 @@ async function loadReport() {
   let html = `
     <div class="mb-4">
       <div class="font-medium">Totales</div>
-      <div>Ventas: ${data.totals.total_sales} — Q${Number(data.totals.total_q).toFixed(2)} — ${Number(data.totals.total_gallons).toFixed(3)} gal</div>
+      <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative">Ventas: ${data.totals.total_sales} — Q${Number(data.totals.total_q).toFixed(2)} — ${Number(data.totals.total_gallons).toFixed(3)} gal</div>
     </div>
   `;
+const labels = {
+  pump_code: 'Bomba',
+  sales_count: 'Ventas',
+  total_q: 'Total (Q)',
+  total_gallons: 'Galones',
+  user_name: 'Despachador',
+  fuel_name: 'Combustible',
+};
 
   function table(title, rows, cols) {
     return `<div class="mb-5">
@@ -66,7 +74,7 @@ async function loadReport() {
       <div class="overflow-auto border rounded-lg">
       <table class="min-w-full text-left text-sm">
         <thead class="bg-gray-100">
-          <tr>${cols.map(c => `<th class="px-3 py-2">${c}</th>`).join('')}</tr>
+          <tr>${cols.map(c => `<th class="px-3 py-2">${labels[c] ?? c}</th>`).join('')}</tr>
         </thead>
         <tbody>
           ${rows.map(r => `<tr class="border-t">

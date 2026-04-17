@@ -21,6 +21,7 @@
 
     <div class="mb">
         Ventas: Q{{ number_format((float)($sales->total_q ?? 0), 2) }} |
+        Abastecimientos: Q{{ number_format((float)($fuelDeliveries->total_q ?? 0), 2) }} |
         Cobros CxC: Q{{ number_format((float)($receivableCollections->total_q ?? 0), 2) }} |
         Gastos: Q{{ number_format((float)($expenses->total_q ?? 0), 2) }} |
         Pagos CxP: Q{{ number_format((float)($payablePayments->total_q ?? 0), 2) }} |
@@ -47,6 +48,10 @@
                 <td>{{ $sales->total_sales ?? 0 }}</td>
                 <td>Q{{ number_format((float)($sales->total_q ?? 0), 2) }}</td>
             </tr>
+                <tr>
+                    <td>Abastecimientos</td>
+                    <td>{{ $fuelDeliveries->total_items ?? 0 }}</td>
+                    <td>Q{{ number_format((float)($fuelDeliveries->total_q ?? 0), 2) }}</td>
             <tr>
                 <td>Gastos</td>
                 <td>{{ $expenses->total_items ?? 0 }}</td>

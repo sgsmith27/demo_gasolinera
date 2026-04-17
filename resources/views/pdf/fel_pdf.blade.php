@@ -72,7 +72,8 @@
             <td><strong>Con error</strong><br>{{ $totals['error_count'] }}</td>
             <td><strong>Monto total</strong><br>Q{{ number_format((float) $totals['total_amount'], 2) }}</td>
             <td><strong>Base imponible</strong><br>Q{{ number_format((float) $totals['taxable_base'], 2) }}</td>
-            <td><strong>IVA estimado 12%</strong><br>Q{{ number_format((float) $totals['vat_amount'], 2) }}</td>
+            <td><strong>IVA reportado</strong><br>Q{{ number_format((float) $totals['reported_vat_amount'], 2) }}</td>
+            <td><strong>IDP reportado</strong><br>Q{{ number_format((float) $totals['reported_idp_amount'], 2) }}</td>
         </tr>
     </table>
 
@@ -87,6 +88,9 @@
                 <th>Cliente</th>
                 <th>NIT/CUI</th>
                 <th>Total</th>
+                <th>Base</th>
+                <th>IVA</th>
+                <th>IDP</th>
                 <th>Estado</th>
                 <th>Usuario</th>
             </tr>
@@ -102,6 +106,9 @@
                     <td>{{ $doc->receiver_name ?? 'CONSUMIDOR FINAL' }}</td>
                     <td>{{ $doc->receiver_taxid ?? 'CF' }}</td>
                     <td>Q{{ number_format((float) ($doc->total_amount_q ?? $doc->sale->total_amount_q ?? 0), 2) }}</td>
+                    <td>Q{{ number_format((float) ($doc->taxable_base_q ?? 0), 2) }}</td>
+                    <td>Q{{ number_format((float) ($doc->vat_amount_q ?? 0), 2) }}</td>
+                    <td>Q{{ number_format((float) ($doc->idp_amount_q ?? 0), 2) }}</td>
                     <td>{{ strtoupper($doc->fel_status) }}</td>
                     <td>{{ $doc->sale->user->name ?? '—' }}</td>
                 </tr>
